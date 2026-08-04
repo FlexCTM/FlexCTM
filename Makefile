@@ -5,6 +5,14 @@ PRECISION ?= real64
 
 # Compiler and external libraries
 AR := ar
+NON_BUILD_GOALS := clean docs
+ifneq ($(strip $(MAKECMDGOALS)),)
+  ifeq ($(strip $(filter-out $(NON_BUILD_GOALS),$(MAKECMDGOALS))),)
+    SKIP_COMPILER_CONFIG := yes
+  endif
+endif
+
+ifneq ($(SKIP_COMPILER_CONFIG),yes)
 ifeq ($(origin COMPILER), undefined)
   ifneq ($(shell command -v mpiifort 2>/dev/null),)
     COMPILER := intel
@@ -49,6 +57,7 @@ LDFLAGS := $(NETCDF_LDFLAGS)
 
 FPM_FFLAGS := $(COMPILER_FFLAGS) $(MPI_FFLAGS) $(NETCDF_FFLAGS)
 FPM_LDFLAGS := $(MPI_LDFLAGS) $(NETCDF_LDFLAGS)
+endif
 
 ifeq ($(PRECISION),real32)
   PRECISION_FLAGS := -DFLEXCTM_REAL32 -DADVECTION_REAL32 -DDIFFUSION_REAL32 \
@@ -80,7 +89,11 @@ LIB_DIR := $(BUILD_DIR)/lib
 BIN_DIR := $(BUILD_DIR)/bin
 
 $(shell mkdir -p $(OBJ_DIR) $(MOD_DIR) $(LIB_DIR) $(BIN_DIR))
-FFLAGS += -J$(MOD_DIR) -I$(MOD_DIR)
+ifeq ($(COMPILER),intel)
+  FFLAGS += -module $(MOD_DIR) -I$(MOD_DIR)
+else
+  FFLAGS += -J$(MOD_DIR) -I$(MOD_DIR)
+endif
 
 SRCS := $(wildcard $(SRC_DIR)/*.[fF]90)
 DRIVE_SRCS := $(wildcard $(SRC_DIR)/drive/*.[fF]90)

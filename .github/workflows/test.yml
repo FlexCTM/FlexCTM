@@ -41,8 +41,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      NETCDF_MPI_LIBDIR: /usr/lib/x86_64-linux-gnu/netcdf/mpi/lib
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -54,6 +52,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes gfortran openmpi-bin libopenmpi-dev libnetcdff-dev libnetcdf-mpi-dev netcdf-bin
+
+      - name: Select parallel NetCDF runtime
+        shell: bash
+        run: |
+          netcdf_mpi_lib=$(ldconfig -p | awk '/libnetcdf_mpi\.so/{print $NF; exit}')
+          test -n "$netcdf_mpi_lib"
+          netcdf_mpi_libdir=/usr/lib/x86_64-linux-gnu/netcdf/mpi/lib
+          test -d "$netcdf_mpi_libdir"
+          echo "NETCDF_MPI_LIBDIR=$netcdf_mpi_libdir" >> "$GITHUB_ENV"
+          echo "LD_PRELOAD=$netcdf_mpi_lib" >> "$GITHUB_ENV"
+          echo "Using parallel NetCDF runtime: $netcdf_mpi_lib"
 
       - name: Set up fpm
         uses: fortran-lang/setup-fpm@v10

@@ -40,7 +40,9 @@ contains
          flush (error_unit)
       end if
 
-      error stop code
+      ! Intel Fortran 18 only accepts a constant stop code here.  MPI-aware
+      ! failures above still preserve the caller-provided code through MPI_ABORT.
+      error stop 1
    end subroutine fatal_error
 
 end module mod_error
