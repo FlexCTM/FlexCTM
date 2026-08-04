@@ -1,0 +1,41 @@
+! FlexCTM 标准气象变量及数值过程诊断变量清单
+!
+! 本文件只描述数值模式实际使用的变量，不包含 WRF/GFS 等数据集的中间变量。
+! 例如 WRF 的 PB、PH、PHB、T00、扰动位温和 QVAPOR 应由 WRF 接口内部管理。
+!
+! category 分为两类：
+!   standard   数值计算前必须由数据集接口准备完成的标准气象变量。
+!   diagnostic 获得标准气象数据后，由 FlexCTM 统一计算的派生量或诊断量。
+!
+! standard 变量可以由数据集直接提供，也可以由对应接口诊断；具体方式不属于标准定义。
+! diagnostic 变量不应由外部气象接口读取。
+!
+! ndim   变量维数；2 表示水平场，3 表示包含模式垂直层的三维场。
+! output 是否写入气象诊断输出；使用 true 或 false。
+! unit   采用 SI 单位；无量纲变量使用 1。
+!
+! name    , ndim, category  , output, unit  , description
+U         , 3   , standard  , true  , m/s   , Eastward wind component
+V         , 3   , standard  , true  , m/s   , Northward wind component
+PBLH      , 2   , standard  , true  , m     , Planetary boundary layer height
+PSFC      , 2   , standard  , true  , Pa    , Surface air pressure
+TSK       , 2   , standard  , true  , K     , Surface skin temperature
+z0        , 2   , standard  , true  , m     , Surface roughness length
+
+W         , 3   , standard  , true  , m/s   , Upward air velocity
+P         , 3   , standard  , true  , Pa    , Air pressure
+T         , 3   , standard  , true  , K     , Air temperature
+rho       , 3   , standard  , true  , kg/m^3, Dry air density
+thetav    , 3   , standard  , true  , K     , Virtual potential temperature
+dz        , 3   , standard  , true  , m     , Model layer thickness
+zt        , 3   , standard  , true  , m     , Model layer top height above local surface
+
+volume    , 3   , diagnostic, true  , m^3   , Grid cell volume
+dzdt      , 3   , diagnostic, true  , m/s   , Time rate of change of layer top height
+kx        , 3   , diagnostic, true  , m^2/s , Horizontal diffusivity in the x direction
+ky        , 3   , diagnostic, true  , m^2/s , Horizontal diffusivity in the y direction
+kz        , 3   , diagnostic, true  , m^2/s , Vertical diffusivity
+Ri        , 2   , diagnostic, true  , 1     , Bulk Richardson number
+ustar     , 2   , diagnostic, true  , m/s   , Friction velocity
+RMOL      , 2   , diagnostic, true  , 1/m   , Reciprocal Monin Obukhov length
+wstar     , 2   , diagnostic, true  , m/s   , Convective velocity scale

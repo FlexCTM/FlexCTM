@@ -1,0 +1,17 @@
+! FlexCTM minimal photochemistry, inorganic aerosol chemistry, and diagnostic tracer registry.
+! name, phase,      role,       transported, advected, diffused, read_initial, read_boundary, read_emission, use_chemistry, dry_deposition, wet_deposition, write_output, unit,    molar_mass, description
+  rho,  diagnostic, diagnostic, true,        true,     true,     false,        false,         false,         false,         false,          false,          true,         kg m-3,  28.9647,    Dry-air density consistency tracer
+  O3,   gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          true,           true,           true,         ug m-3,  47.9982,    Ozone
+  NO,   gas,        reactive,   true,        true,     true,     true,         true,          true,          true,          false,          false,          true,         ug m-3,  30.0061,    Nitric oxide
+  NO2,  gas,        reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  46.0055,    Nitrogen dioxide
+  CO,   gas,        reactive,   true,        true,     true,     true,         true,          true,          true,          true,           false,          true,         ug m-3,  28.0101,    Carbon monoxide
+  OH,   gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          false,          false,          false,        ug m-3,  17.0073,    Hydroxyl radical
+  HO2,  gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          false,          false,          false,        ug m-3,  33.0067,    Hydroperoxyl radical
+  H2O2, gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          true,           true,           true,         ug m-3,  34.0147,    Hydrogen peroxide
+  SO2,  gas,        reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  64.0660,    Sulfur dioxide
+  H2SO4,gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          true,           true,           false,        ug m-3,  98.0785,    Sulfuric acid vapor
+  NH3,  gas,        reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  17.0305,    Ammonia
+  HNO3, gas,        reactive,   true,        true,     true,     true,         true,          false,         true,          true,           true,           true,         ug m-3,  63.0128,    Nitric acid
+  SO4,  aerosol,    reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  96.0630,    Particulate sulfate
+  NO3,  aerosol,    reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  62.0049,    Particulate nitrate
+  NH4,  aerosol,    reactive,   true,        true,     true,     true,         true,          true,          true,          true,           true,           true,         ug m-3,  18.0385,    Particulate ammonium

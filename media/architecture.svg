@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">FlexCTM 软件分层</title>
+  <desc id="desc">应用入口调用主模式核心。核心持有 block 状态，通过数据适配模块读写外部文件，通过 driver 调用独立数值软件包。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
+    <style>
+      .title{font-family:'DejaVu Sans',sans-serif;font-size:24px;font-weight:700;fill:#172b4d}.label{font-family:'DejaVu Sans',sans-serif;font-size:18px;font-weight:700;fill:#172b4d}.text{font-family:'DejaVu Sans',sans-serif;font-size:15px;fill:#344563}.small{font-family:'DejaVu Sans',sans-serif;font-size:14px;fill:#5e6c84}.box{stroke-width:2;rx:12}.line{stroke:#52606d;stroke-width:2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="520" fill="#f7f9fc"/>
+  <text x="600" y="38" text-anchor="middle" class="title">FlexCTM software layers</text>
+
+  <rect x="420" y="65" width="360" height="70" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="600" y="94" text-anchor="middle" class="label">Application entry: app/main.f90</text>
+  <text x="600" y="118" text-anchor="middle" class="text">configuration - startup - cleanup</text>
+  <path d="M600 135 L600 174" class="line"/>
+
+  <rect x="300" y="178" width="600" height="154" class="box" fill="#e3fcef" stroke="#36b37e"/>
+  <text x="600" y="208" text-anchor="middle" class="label">Model core</text>
+  <rect x="330" y="230" width="250" height="76" class="box" fill="#ffffff" stroke="#57d9a3"/>
+  <text x="455" y="258" text-anchor="middle" class="label">block_type</text>
+  <text x="455" y="282" text-anchor="middle" class="small">grid - meteorology - chemistry - boundary</text>
+  <rect x="620" y="230" width="250" height="76" class="box" fill="#ffffff" stroke="#57d9a3"/>
+  <text x="745" y="258" text-anchor="middle" class="label">Time and domain scheduler</text>
+  <text x="745" y="282" text-anchor="middle" class="small">initialization - substeps - output timing</text>
+
+  <path d="M455 332 L290 382" class="line"/>
+  <path d="M745 332 L910 382" class="line"/>
+
+  <rect x="60" y="386" width="460" height="104" class="box" fill="#fff0b3" stroke="#ffab00"/>
+  <text x="290" y="416" text-anchor="middle" class="label">Data interfaces and I/O</text>
+  <text x="290" y="444" text-anchor="middle" class="text">WRF / GFS - IC / BC - emission - output</text>
+  <text x="290" y="470" text-anchor="middle" class="small">external data to standard FlexCTM fields</text>
+
+  <rect x="680" y="386" width="460" height="104" class="box" fill="#eae6ff" stroke="#6554c0"/>
+  <text x="910" y="416" text-anchor="middle" class="label">Drivers and numerical packages</text>
+  <text x="910" y="444" text-anchor="middle" class="text">advection · diffusion · ysu · parallel · projection</text>
+  <text x="910" y="470" text-anchor="middle" class="small">drivers adapt state; kernels do not depend on block_type</text>
+</svg>

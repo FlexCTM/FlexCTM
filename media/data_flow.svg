@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">FlexCTM 数据流</title>
+  <desc id="desc">外部数据经过适配器转换为标准气象、化学和排放场，进入 block 状态，再由 driver 传给数值机制并写出标准结果。</desc>
+  <defs>
+    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
+    <style>.title{font-family:'DejaVu Sans',sans-serif;font-size:24px;font-weight:700;fill:#172b4d}.label{font-family:'DejaVu Sans',sans-serif;font-size:18px;font-weight:700;fill:#172b4d}.text{font-family:'DejaVu Sans',sans-serif;font-size:14px;fill:#344563}.box{stroke-width:2;rx:12}.line{stroke:#52606d;stroke-width:2;fill:none;marker-end:url(#arrow2)}</style>
+  </defs>
+  <rect width="1200" height="400" fill="#f7f9fc"/>
+  <text x="600" y="40" text-anchor="middle" class="title">External formats stop at the model boundary</text>
+
+  <rect x="35" y="95" width="205" height="210" class="box" fill="#fff0b3" stroke="#ffab00"/>
+  <text x="137" y="126" text-anchor="middle" class="label">External inputs</text>
+  <text x="137" y="164" text-anchor="middle" class="text">configuration / metadata</text>
+  <text x="137" y="194" text-anchor="middle" class="text">meteorology datasets</text>
+  <text x="137" y="224" text-anchor="middle" class="text">chemical IC / BC</text>
+  <text x="137" y="254" text-anchor="middle" class="text">standard emission inventory</text>
+
+  <path d="M240 200 L294 200" class="line"/>
+  <rect x="300" y="120" width="210" height="160" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="405" y="154" text-anchor="middle" class="label">Data interfaces and I/O</text>
+  <text x="405" y="190" text-anchor="middle" class="text">validate metadata and files</text>
+  <text x="405" y="220" text-anchor="middle" class="text">map dataset variables</text>
+  <text x="405" y="250" text-anchor="middle" class="text">normalize units and grids</text>
+
+  <path d="M510 200 L564 200" class="line"/>
+  <rect x="570" y="95" width="250" height="210" class="box" fill="#e3fcef" stroke="#36b37e"/>
+  <text x="695" y="130" text-anchor="middle" class="label">Standard block_type state</text>
+  <text x="695" y="168" text-anchor="middle" class="text">meteorology: mete2d / mete3d</text>
+  <text x="695" y="202" text-anchor="middle" class="text">concentration: chem3d</text>
+  <text x="695" y="236" text-anchor="middle" class="text">emission: emis3d</text>
+  <text x="695" y="270" text-anchor="middle" class="text">grid - halo - boundary</text>
+
+  <path d="M820 160 L874 135" class="line"/>
+  <path d="M820 240 L874 265" class="line"/>
+  <rect x="880" y="80" width="285" height="110" class="box" fill="#eae6ff" stroke="#6554c0"/>
+  <text x="1022" y="114" text-anchor="middle" class="label">Driver to numerical kernel</text>
+  <text x="1022" y="150" text-anchor="middle" class="text">advection - diffusion - PBL</text>
+  <text x="1022" y="174" text-anchor="middle" class="text">chemistry - dry / wet deposition</text>
+  <rect x="880" y="215" width="285" height="110" class="box" fill="#ffebe6" stroke="#ff5630"/>
+  <text x="1022" y="250" text-anchor="middle" class="label">Standard outputs</text>
+  <text x="1022" y="286" text-anchor="middle" class="text">concentration - diagnostics - static grid</text>
+  <text x="1022" y="310" text-anchor="middle" class="text">NetCDF precision follows model precision</text>
+</svg>

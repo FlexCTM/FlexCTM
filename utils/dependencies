@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+dependency_root="${repository_root}/build/dependencies"
+all_dependencies=(advection container datetime diffusion parallel projection ysu test-drive)
+
+mkdir -p "${dependency_root}"
+
+if (( $# > 0 )); then
+  dependencies=("$@")
+else
+  dependencies=("${all_dependencies[@]}")
+fi
+
+for dependency in "${dependencies[@]}"; do
+  case " ${all_dependencies[*]} " in
+    *" ${dependency} "*) ;;
+    *)
+      echo "Unknown FlexCTM dependency: ${dependency}" >&2
+      exit 1
+      ;;
+  esac
+
+  destination="${dependency_root}/${dependency}"
+  if [[ "${dependency}" == "test-drive" && -f "${destination}/fpm.toml" && \
+        -f "${destination}/CMakeLists.txt" ]]; then
+    echo "reuse ${destination}"
+  elif [[ "${dependency}" != "test-drive" && -f "${destination}/fpm.toml" && \
+          -f "${destination}/CMakeLists.txt" && -f "${destination}/Makefile" ]]; then
+    echo "reuse ${destination}"
+  elif [[ -e "${destination}" || -L "${destination}" ]]; then
+    echo "Incomplete dependency checkout: ${destination}" >&2
+    exit 1
+  else
+    if [[ "${dependency}" == "test-drive" ]]; then
+      echo "clone https://github.com/fortran-lang/test-drive.git at v0.6.0"
+      git clone --branch v0.6.0 --depth 1 \
+        "https://github.com/fortran-lang/test-drive.git" "${destination}"
+    else
+      echo "clone https://github.com/FlexCTM/${dependency}.git"
+      git clone --depth 1 "https://github.com/FlexCTM/${dependency}.git" "${destination}"
+    fi
+  fi
+done

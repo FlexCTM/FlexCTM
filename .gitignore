@@ -1,0 +1,29 @@
+# Build and generated documentation
+/build/
+/_site/
+/docs/
+*.nc
+
+# Editor and operating-system files
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Fortran build products
+*.d
+*.mod
+*.smod
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Python cache
+__pycache__/
+*.py[cod]
+

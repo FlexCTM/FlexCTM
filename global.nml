@@ -1,0 +1,53 @@
+&region ! 区域设置和气象输入数据一致
+   ndom = 1
+   nlev = 50
+   we                = 360
+   sn                = 180
+   parent_id         = 1
+   parent_grid_ratio = 1
+   i_parent_start    = 1
+   j_parent_start    = 1
+/
+
+&proj
+   is_global = .true.
+   proj_id = 0 ! 1 for LCC, 0 for latitude-longitude
+   xorg = 0.0
+   yorg = -90.0
+   delta = 1.0
+/
+
+&time
+   start_time = '2024010212'
+   run_hours = 1
+   dt = 180
+/
+
+&physics
+   twindow = 1
+   nhalo = 3
+/
+
+&chem
+   chem_meta_file = './meta/species.csv'
+
+   ic_file = './icbc/naqp_ic_d0[DOMAIN].nc'
+
+   bc_file = './icbc/naqp_bc.nc'
+
+   emis_file = '/3clear/share/xiaolh/v3/global/emis/diag_naqp_ar_total_d01_2024060101.nc'
+   emis_nlev = 19
+/
+
+&mete
+   mete_table_file = './meta/mete.standard.csv'
+   mete_mapping_file = './meta/mete.wrf.csv'
+   mete_source = 'wrf'
+   mete_file = '/3clear/share/xiaolh/v3/global/wrf/wrfout_d0[DOMAIN]_%Y-%m-%d_%H:00:00'
+   mete_timedelta = 3600
+/
+
+&output
+   out_file_name = 'ctm_d0[DOMAIN]_%Y%m%d%H.nc'
+   static_grid_file = 'static_meta_d0[DOMAIN].nc'
+/

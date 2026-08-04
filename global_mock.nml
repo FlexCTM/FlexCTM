@@ -1,0 +1,52 @@
+! One-degree global case using deterministic MOCK inputs.
+&region
+   ndom = 1
+   nlev = 20
+   we = 360
+   sn = 180
+   parent_id = 0
+/
+
+&proj
+   is_global = .true.
+   proj_id = 0
+   xorg = -180.0
+   yorg = -90.0
+   delta = 1.0
+/
+
+&time
+   start_time = '2024010100'
+   run_minutes = 120
+   dt = 600
+/
+
+&physics
+   twindow = 1
+   nhalo = 3
+/
+
+&chem
+   chem_meta_file = './meta/species.csv'
+
+   ic_file = ''
+
+   bc_file = ''
+
+   emis_file = ''
+   emis_nlev = 1
+/
+
+&mete
+   mete_table_file = './meta/mete.standard.csv'
+
+   mete_mapping_file = ''
+   mete_source = 'mock'
+   mete_file = ''
+   mete_timedelta = 3600
+/
+
+&output
+   out_file_name = './flexctm_global_mock_d0[DOMAIN]_%Y%m%d%H.nc'
+   static_grid_file = './static_meta_d0[DOMAIN].nc'
+/

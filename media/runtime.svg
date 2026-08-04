@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">FlexCTM 运行时序</title>
+  <desc id="desc">模式先完成配置、并行、网格和状态初始化。每个根时间步更新边界、气象和排放，再为每个区域执行子时间步中的气象准备、源项、输送、极点和输出。</desc>
+  <defs>
+    <marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
+    <style>.title{font-family:'DejaVu Sans',sans-serif;font-size:24px;font-weight:700;fill:#172b4d}.label{font-family:'DejaVu Sans',sans-serif;font-size:17px;font-weight:700;fill:#172b4d}.text{font-family:'DejaVu Sans',sans-serif;font-size:14px;fill:#344563}.small{font-family:'DejaVu Sans',sans-serif;font-size:13px;fill:#5e6c84}.box{stroke-width:2;rx:10}.line{stroke:#52606d;stroke-width:2;fill:none;marker-end:url(#arrow3)}</style>
+  </defs>
+  <rect width="1200" height="560" fill="#f7f9fc"/>
+  <text x="600" y="38" text-anchor="middle" class="title">FlexCTM runtime sequence</text>
+
+  <rect x="40" y="80" width="205" height="100" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="142" y="112" text-anchor="middle" class="label">1. Configuration</text><text x="142" y="140" text-anchor="middle" class="text">namelist - species table</text><text x="142" y="162" text-anchor="middle" class="text">meteorology mapping</text>
+  <path d="M245 130 L284 130" class="line"/>
+  <rect x="290" y="80" width="205" height="100" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="392" y="112" text-anchor="middle" class="label">2. Parallel grid</text><text x="392" y="140" text-anchor="middle" class="text">domain decomposition - halo</text><text x="392" y="162" text-anchor="middle" class="text">projection - local mesh</text>
+  <path d="M495 130 L534 130" class="line"/>
+  <rect x="540" y="80" width="205" height="100" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="642" y="112" text-anchor="middle" class="label">3. State initialization</text><text x="642" y="140" text-anchor="middle" class="text">block allocation - chemistry IC</text><text x="642" y="162" text-anchor="middle" class="text">static meteorology and grid</text>
+  <path d="M745 130 L784 130" class="line"/>
+  <rect x="790" y="80" width="370" height="100" class="box" fill="#e3fcef" stroke="#36b37e"/>
+  <text x="975" y="112" text-anchor="middle" class="label">4. Root-step input update</text><text x="975" y="140" text-anchor="middle" class="text">boundary - meteorology times - emission</text><text x="975" y="162" text-anchor="middle" class="small">input cadence is separate from domain substeps</text>
+
+  <path d="M975 180 L975 224 L1045 224 L1045 250" class="line"/>
+  <rect x="40" y="230" width="1120" height="270" class="box" fill="#ffffff" stroke="#36b37e"/>
+  <text x="600" y="260" text-anchor="middle" class="label">One numerical substep for one domain</text>
+
+  <rect x="65" y="295" width="175" height="80" class="box" fill="#e3fcef" stroke="#36b37e"/>
+  <text x="152" y="322" text-anchor="middle" class="label">Meteorology</text><text x="152" y="346" text-anchor="middle" class="small">interpolate - halo</text><text x="152" y="364" text-anchor="middle" class="small">diagnose</text>
+  <path d="M240 335 L269 335" class="line"/>
+  <rect x="275" y="295" width="145" height="80" class="box" fill="#fff0b3" stroke="#ffab00"/>
+  <text x="347" y="326" text-anchor="middle" class="label">Emission source</text><text x="347" y="352" text-anchor="middle" class="text">emis * dt / dz</text>
+  <path d="M420 335 L449 335" class="line"/>
+  <rect x="455" y="295" width="145" height="80" class="box" fill="#f4f5f7" stroke="#7a869a"/>
+  <text x="527" y="326" text-anchor="middle" class="label">Chem / deposition</text><text x="527" y="352" text-anchor="middle" class="text">state tendency update</text>
+  <path d="M600 335 L629 335" class="line"/>
+  <rect x="635" y="295" width="145" height="80" class="box" fill="#eae6ff" stroke="#6554c0"/>
+  <text x="707" y="326" text-anchor="middle" class="label">Boundary prep</text><text x="707" y="352" text-anchor="middle" class="text">domain BC - halo</text>
+  <path d="M780 335 L809 335" class="line"/>
+  <rect x="815" y="295" width="320" height="80" class="box" fill="#eae6ff" stroke="#6554c0"/>
+  <text x="975" y="318" text-anchor="middle" class="label">Transport</text><text x="975" y="342" text-anchor="middle" class="small">H advection -> H diffusion</text><text x="975" y="362" text-anchor="middle" class="small">V diffusion -> V advection</text>
+
+  <path d="M975 375 L975 402 L842 402 L842 425" class="line"/>
+  <rect x="650" y="425" width="190" height="55" class="box" fill="#ffebe6" stroke="#ff5630"/>
+  <text x="745" y="458" text-anchor="middle" class="label">Pole and time levels</text>
+  <path d="M650 452 L621 452" class="line"/>
+  <rect x="425" y="425" width="190" height="55" class="box" fill="#ffebe6" stroke="#ff5630"/>
+  <text x="520" y="458" text-anchor="middle" class="label">Scheduled output</text>
+  <path d="M425 452 L396 452" class="line"/>
+  <rect x="110" y="425" width="280" height="55" class="box" fill="#deebff" stroke="#2684ff"/>
+  <text x="250" y="458" text-anchor="middle" class="label">Next domain substep or root step</text>
+</svg>

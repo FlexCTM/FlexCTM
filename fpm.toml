@@ -1,0 +1,41 @@
+name = "FlexCTM"
+version = "0.1.0"
+license = "GPL-3.0-or-later"
+author = "Linhong Xiao"
+maintainer = "xiaolh@3clear.com"
+copyright = "Copyright 2024-2026, Linhong Xiao"
+
+[build]
+link = ["netcdf", "netcdff"]
+external-modules = ["netcdf", "netcdff"]
+
+auto-executables = true
+auto-tests = true
+auto-examples = true
+module-naming = false
+
+[install]
+library = false
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[preprocess.cpp]
+suffixes = ["F90"]
+
+[dependencies]
+parallel = { path = "build/dependencies/parallel" }
+datetime = { path = "build/dependencies/datetime" }
+container = { path = "build/dependencies/container" }
+projection = { path = "build/dependencies/projection" }
+ysu = { path = "build/dependencies/ysu" }
+advection = { path = "build/dependencies/advection" }
+diffusion = { path = "build/dependencies/diffusion" }
+
+[dev-dependencies]
+test-drive = { path = "build/dependencies/test-drive" }
+
+# Build commands, including dependency preparation, MPI/NetCDF flags and
+# precision macros, are listed in README.md.

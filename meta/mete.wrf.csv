@@ -1,0 +1,39 @@
+! WRF 原始变量到 FlexCTM 标准气象变量的接口映射
+!
+! 本文件只描述 category=standard 的变量；FlexCTM 公共诊断变量不应出现在这里。
+! 每个标准变量在离开 WRF 接口前都必须准备完成。
+!
+! inputs 使用分号分隔依赖项，并用前缀标明其所属空间：
+!   raw:      WRF NetCDF 中的原始变量。
+!   standard: 已经生成的 FlexCTM 标准气象变量。
+!
+! method 表示 WRF 接口采用的读取或诊断方法：
+!   direct                 直接读取质量网格变量。
+!   wrf_u_staggered        读取 WRF X 方向交错网格变量。
+!   wrf_v_staggered        读取 WRF Y 方向交错网格变量。
+!   wrf_w_staggered        读取 WRF 垂直交错网格变量。
+!   wrf_total_pressure     将基准气压和扰动气压相加。
+!   wrf_air_temperature    由 WRF 扰动位温、基准位温和气压诊断实际温度。
+!   ideal_gas_density      使用理想气体状态方程诊断干空气密度。
+!   wrf_virtual_theta      由 WRF 位温和水汽混合比诊断虚位温。
+!   wrf_layer_thickness    由相邻半层位势高度之差诊断层厚。
+!   wrf_layer_top_height   由半层位势高度诊断相对地面的层顶高度。
+!
+! source_unit 是 inputs 中原始量的单位；mixed 表示多个输入的量纲不同。
+! target_unit 必须与 mete.standard.csv 中相应标准变量的单位一致。
+!
+! name, ndim, inputs                     , method               , source_unit, target_unit, description
+U     , 3   , raw:U                      , wrf_u_staggered      , m/s     , m/s    , Eastward wind component
+V     , 3   , raw:V                      , wrf_v_staggered      , m/s     , m/s    , Northward wind component
+W     , 3   , raw:W                      , wrf_w_staggered      , m/s     , m/s    , Upward air velocity
+PBLH  , 2   , raw:PBLH                   , direct               , m       , m      , Boundary layer height
+PSFC  , 2   , raw:PSFC                   , direct               , Pa      , Pa     , Surface air pressure
+TSK   , 2   , raw:TSK                    , direct               , K       , K      , Surface skin temperature
+z0    , 2   , raw:Z0                     , direct               , m       , m      , Surface roughness length
+
+P     , 3   , raw:PB;raw:P               , wrf_total_pressure   , Pa      , Pa     , Air pressure
+T     , 3   , raw:T;raw:T00;standard:P   , wrf_air_temperature  , mixed   , K      , Air temperature
+rho   , 3   , standard:P;standard:T       , ideal_gas_density    , mixed   , kg/m^3 , Dry air density
+thetav, 3   , raw:T;raw:T00;raw:QVAPOR   , wrf_virtual_theta    , mixed   , K      , Virtual potential temperature
+dz    , 3   , raw:PH;raw:PHB             , wrf_layer_thickness  , m^2/s^2 , m      , Model layer thickness
+zt    , 3   , raw:PH;raw:PHB             , wrf_layer_top_height , m^2/s^2 , m      , Model layer top height

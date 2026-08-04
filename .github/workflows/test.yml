@@ -1,0 +1,72 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - app/**
+      - src/**
+      - test/**
+      - meta/**
+      - "*.nml"
+      - CMakeLists.txt
+      - Makefile
+      - fpm.toml
+      - utils/deps
+      - utils/dependencies
+      - .github/workflows/test.yml
+  pull_request:
+    paths:
+      - app/**
+      - src/**
+      - test/**
+      - meta/**
+      - "*.nml"
+      - CMakeLists.txt
+      - Makefile
+      - fpm.toml
+      - utils/deps
+      - utils/dependencies
+      - .github/workflows/test.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Prepare FlexCTM dependencies
+        run: bash utils/dependencies
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gfortran openmpi-bin libopenmpi-dev libnetcdff-dev netcdf-bin
+
+      - name: Set up fpm
+        uses: fortran-lang/setup-fpm@v10
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run unit tests
+        run: make test COMPILER=gnu FC=mpifort
+
+      - name: Run two-rank integration tests
+        shell: bash
+        run: |
+          test_exe=$(find build/make/debug/real64/tests -type f -path '*/test/integration_netcdf' -perm -111 -print -quit)
+          test -n "$test_exe"
+          timeout 60s mpiexec -n 2 "$test_exe"
+
+      - name: Run real32 tests
+        run: make test COMPILER=gnu FC=mpifort PRECISION=real32
