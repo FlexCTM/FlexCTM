@@ -186,7 +186,7 @@ MOCK 案例用于构建验证、单元测试和数值回归，不代表业务输
 
 ## 后处理
 
-`utils/merge.py` 和 `utils/plot.py` 使用 Python 3。合并需要 netCDF4；绘图需要 NumPy、xarray 和 Matplotlib。Cartopy 是可选依赖，安装后绘图会自动添加海岸线。
+`utils/merge.py` 和 `utils/plot.py` 使用 Python 3。合并需要 netCDF4；绘图需要 NumPy、xarray 和 Matplotlib。Cartopy 仅在绘制海岸线时需要。
 
 ```bash
 python -m pip install numpy xarray netCDF4 matplotlib
@@ -225,17 +225,17 @@ python utils/plot.py ctm_d01.nc NO2 \
 
 `--time-index` 和 `--level` 都从 0 开始。对于按时间排序的 `ctm_d01_2024010212.nc`、`ctm_d01_2024010213.nc` 等文件，`time-index=0` 对应第一个文件，`time-index=1` 对应第二个文件。
 
-需要从第二个文件开始依次绘制到第 13 个文件时，可以执行：
+需要从第二个文件开始绘制到最后一个文件时，使用批量模式：
 
 ```bash
-for index in $(seq 1 12); do
-  python utils/plot.py ctm_d01.nc NO2 \
-    --grid static_meta_d01.nc \
-    --time-index "${index}" --level 0
-done
+python utils/plot.py ctm_d01.nc NO2 \
+  --grid static_meta_d01.nc \
+  --all-times --start-time-index 1 --level 0
 ```
 
-未指定 `--output` 时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。二维变量会忽略垂直层选择。可以使用 `--levels 0,10,20,40,80` 指定色阶，或使用 `--vmin`、`--vmax` 指定颜色范围。完整参数通过以下命令查看：
+批量模式只启动一次 Python，并且只打开一次输入文件，明显快于在 shell 循环中反复调用脚本。`--start-time-index` 和 `--end-time-index` 指定包含端点的索引范围；省略 `--end-time-index` 时绘制到最后一个时次。可以使用 `--output-dir figures` 指定输出目录。未指定时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。
+
+默认绘图不加载 Cartopy，也不联网下载地图数据。需要海岸线时安装 Cartopy 并增加 `--coastlines`；首次使用可能下载 Natural Earth 数据，因此速度较慢。二维变量会忽略垂直层选择。可以使用 `--levels 0,10,20,40,80` 指定色阶，或使用 `--vmin`、`--vmax` 指定颜色范围。完整参数通过以下命令查看：
 
 ```bash
 python utils/merge.py --help
