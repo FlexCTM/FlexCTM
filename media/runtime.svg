@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
   <title id="title">FlexCTM 运行时序</title>
-  <desc id="desc">模式先完成配置、并行、网格和状态初始化。每个根时间步更新边界、气象和排放，再为每个区域执行子时间步中的气象准备、源项、输送、极点和输出。</desc>
+  <desc id="desc">模式先完成配置、并行、网格和状态初始化。每个根时间步更新输入并完成所有区域子步，再将气象准备到根时间步结束时刻并输出瞬时状态。</desc>
   <defs>
     <marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#52606d"/></marker>
     <style>.title{font-family:'DejaVu Sans',sans-serif;font-size:24px;font-weight:700;fill:#172b4d}.label{font-family:'DejaVu Sans',sans-serif;font-size:17px;font-weight:700;fill:#172b4d}.text{font-family:'DejaVu Sans',sans-serif;font-size:14px;fill:#344563}.small{font-family:'DejaVu Sans',sans-serif;font-size:13px;fill:#5e6c84}.box{stroke-width:2;rx:10}.line{stroke:#52606d;stroke-width:2;fill:none;marker-end:url(#arrow3)}</style>
@@ -22,7 +22,7 @@
 
   <path d="M975 180 L975 224 L1045 224 L1045 250" class="line"/>
   <rect x="40" y="230" width="1120" height="270" class="box" fill="#ffffff" stroke="#36b37e"/>
-  <text x="600" y="260" text-anchor="middle" class="label">One numerical substep for one domain</text>
+  <text x="600" y="260" text-anchor="middle" class="label">Domain substeps and root-step completion</text>
 
   <rect x="65" y="295" width="175" height="80" class="box" fill="#e3fcef" stroke="#36b37e"/>
   <text x="152" y="322" text-anchor="middle" class="label">Meteorology</text><text x="152" y="346" text-anchor="middle" class="small">interpolate - halo</text><text x="152" y="364" text-anchor="middle" class="small">diagnose</text>
@@ -44,8 +44,9 @@
   <text x="745" y="458" text-anchor="middle" class="label">Pole and time levels</text>
   <path d="M650 452 L621 452" class="line"/>
   <rect x="425" y="425" width="190" height="55" class="box" fill="#ffebe6" stroke="#ff5630"/>
-  <text x="520" y="458" text-anchor="middle" class="label">Scheduled output</text>
+  <text x="520" y="458" text-anchor="middle" class="label">All domains complete</text>
   <path d="M425 452 L396 452" class="line"/>
   <rect x="110" y="425" width="280" height="55" class="box" fill="#deebff" stroke="#2684ff"/>
-  <text x="250" y="458" text-anchor="middle" class="label">Next domain substep or root step</text>
+  <text x="250" y="448" text-anchor="middle" class="label">Endpoint meteorology and output</text>
+  <text x="250" y="469" text-anchor="middle" class="small">then start the next root step</text>
 </svg>

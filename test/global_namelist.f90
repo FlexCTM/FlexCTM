@@ -23,6 +23,10 @@ contains
       if (.not. allocated(error)) call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/global/wrf/') == 1 .and. &
                            index(config%emis_file, '/3clear/share/xiaolh/v3/global/emis/') == 1, &
                     'formal global input paths changed unexpectedly')
+      if (.not. allocated(error)) call check(error, trim(config%out_file) == 'ctm_d0[DOMAIN]_%Y%m%d%H.nc' .and. &
+                           config%mete_steps == nint(config%mete_timedelta/config%dt) .and. &
+                           config%output_steps == nint(config%output_timedelta/config%dt), &
+                    'formal global output schedule is incorrect')
    end subroutine test_config
 end module test_global_namelist
 

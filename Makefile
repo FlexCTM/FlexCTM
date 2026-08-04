@@ -174,7 +174,7 @@ $(DRIVE_OBJS): $(OBJ_DIR)/%.o: $(SRC_DIR)/drive/%
 
 .PHONY: run test _test docs clean gdb
 run: $(EXE)
-	mpirun -np 1 $(EXE) global_mock.nml
+	mpirun -np 1 $(EXE) mock.nml
 
 test:
 	+@$(MAKE) BUILD=debug PRECISION=$(PRECISION) _test

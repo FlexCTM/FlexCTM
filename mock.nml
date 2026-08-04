@@ -47,6 +47,7 @@
 /
 
 &output
-   out_file_name = './flexctm_global_mock_d0[DOMAIN]_%Y%m%d%H.nc'
+   out_file = './flexctm_global_mock_d0[DOMAIN]_%Y%m%d%H.nc'
+   output_timedelta = 3600
    static_grid_file = './static_meta_d0[DOMAIN].nc'
 /

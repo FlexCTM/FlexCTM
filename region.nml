@@ -42,13 +42,15 @@
 
 &mete
    mete_table_file = './meta/mete.standard.csv'
-   mete_mapping_file = './meta/mete.wrf.csv'
+
    mete_source = 'wrf'
-   mete_file = '/3clear/share/xiaolh/v3/region/wrf/wrfout_d0[DOMAIN]_%Y-%m-%d_%H:00:00'
+   mete_mapping_file = './meta/mete.wrf.csv'
    mete_timedelta = 3600
+   mete_file = '/3clear/share/xiaolh/v3/region/wrf/wrfout_d0[DOMAIN]_%Y-%m-%d_%H:00:00'
 /
 
 &output
-   out_file_name = 'ctm_d0[DOMAIN]_%Y%m%d%H.nc'
+   out_file = 'ctm_d0[DOMAIN]_%Y%m%d%H.nc'
+   output_timedelta = 3600
    static_grid_file = 'static_meta_d0[DOMAIN].nc'
 /

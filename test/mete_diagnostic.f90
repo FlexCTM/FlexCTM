@@ -7,7 +7,7 @@ module test_mete_diagnostic
    use mod_mete_type, only: mete_table_type
    use mod_mete_csv, only: load_mete_table
    use mod_meteorology_mock, only: generate_mock_meteorology
-   use mod_mete_diagnostic, only: diagnose_meteorology
+   use mod_mete_diagnostic, only: diagnose_meteorology, prepare_meteorology
    use parallel, only: grid_meta_type, process_type
    use projection, only: proj_type
    use testdrive, only: check, error_type, new_unittest, unittest_type
@@ -17,7 +17,7 @@ module test_mete_diagnostic
 contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
-      tests = [new_unittest('common meteorology diagnostics', test_diagnostics)]
+      tests = [new_unittest('meteorology interpolation and diagnostics', test_diagnostics)]
    end subroutine collect_tests
 
    subroutine setup(block_data, proc)
@@ -41,7 +41,8 @@ contains
       type(block_type) :: block_data
       type(process_type) :: proc
       real(fp), allocatable :: pressure(:, :, :), temperature(:, :, :), density(:, :, :)
-      integer :: k
+      real(fp), allocatable :: first(:, :, :), second(:, :, :)
+      integer :: k, psfc_index, zt_index
       call setup(block_data, proc)
       pressure = block_data%P
       temperature = block_data%T
@@ -62,6 +63,22 @@ contains
                            all(block_data%ustar >= 0._fp), 'surface-layer diagnostics are invalid')
       if (.not. allocated(error)) call check(error, all(block_data%P == pressure) .and. all(block_data%T == temperature) .and. &
                            all(block_data%rho == density), 'common diagnostics modified standard fields')
+      if (.not. allocated(error)) then
+         first = block_data%mete2d
+         second = first + 4._fp
+         block_data%mete2d_1 = first
+         block_data%mete2d_2 = second
+         block_data%mete3d_1 = block_data%mete3d
+         block_data%mete3d_2 = block_data%mete3d
+         psfc_index = block_data%m2d_idx%get('PSFC')
+         zt_index = block_data%m3d_idx%get('zt')
+         block_data%mete3d_2(:, :, :, zt_index) = block_data%mete3d_1(:, :, :, zt_index) + 36._fp
+         call prepare_meteorology(proc%tiles(1), block_data, 0.25_fp, 3600._fp, 60._fp)
+         call check(error, all(abs(block_data%PSFC - (first(:, :, psfc_index) + 3._fp)) <= 10._fp*epsilon(1._fp)), &
+                    'meteorology was not interpolated to the requested valid time')
+         if (.not. allocated(error)) call check(error, all(abs(block_data%dzdt - 0.01_fp) <= 10._fp*epsilon(1._fp)), &
+                           'meteorological height tendency is inconsistent with the input interval')
+      end if
       call block_data%clear()
       call proc%clear()
    end subroutine test_diagnostics

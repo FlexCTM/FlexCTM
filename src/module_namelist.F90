@@ -7,7 +7,7 @@ module mod_namelist
 
    private
 
-   public :: config_type, load_config, calculate_time_steps
+   public :: config_type, load_config, calculate_time_steps, calculate_interval_steps
 
    integer, parameter :: lcc = 1
    integer, parameter :: latlon = 0
@@ -28,12 +28,15 @@ module mod_namelist
       integer :: emis_nlev            !! Vertical levels present in emission files. / 排放文件的垂直层数。
       integer :: nt                   !! Number of root-domain time steps. / 根区域总时间步数。
       integer :: nts(MAX_DOM)         !! Substeps per root step for each domain. / 各区域每个根时间步的子步数。
+      integer :: mete_steps           !! Root steps between meteorology inputs. / 相邻气象时次间的根时间步数。
+      integer :: output_steps         !! Root steps between model outputs. / 相邻模式输出间的根时间步数。
       real(fp) :: delta               !! Root-domain horizontal spacing [degree or m]. / 根区域水平分辨率 [度或米]。
       real(fp) :: xorg, yorg          !! Root southwest origin [degree or m]. / 根区域西南角坐标 [度或米]。
       real(fp) :: ref_lat, ref_lon    !! Projection origin [degree]. / 投影原点纬度和经度 [度]。
       real(fp) :: truelat1, truelat2  !! LCC standard parallels [degree]. / LCC 第一、第二标准纬线 [度]。
       real(fp) :: dt                  !! Root-domain integration step [s]. / 根区域积分时间步长 [s]。
       real(fp) :: mete_timedelta      !! Meteorology input interval [s]. / 气象输入时间间隔 [s]。
+      real(fp) :: output_timedelta    !! Model output interval [s]. / 模式输出时间间隔 [s]。
       real(fp) :: run_minutes(MAX_DOM) !! Requested duration component [min]. / 配置的运行分钟分量。
       real(fp) :: run_hours(MAX_DOM)  !! Requested duration component [h]. / 配置的运行小时分量。
       real(fp) :: run_days(MAX_DOM)   !! Requested duration component [day]. / 配置的运行天数分量。
@@ -49,7 +52,7 @@ module mod_namelist
       character(len=16) :: mete_source !! Meteorology source: wrf or mock. / 气象数据源。
       character(len=256) :: ic_file, bc_file !! Initial/boundary filename templates. / 初值与边界文件名模板。
       character(len=256) :: emis_file, mete_file !! Emission/meteorology templates. / 排放与气象文件名模板。
-      character(len=256) :: out_file_name !! Output filename template. / 输出文件名模板。
+      character(len=256) :: out_file      !! Output filename template. / 输出文件名模板。
       character(len=256) :: static_grid_file !! 静态网格输出模板。
       character(len=1) :: dom_str(MAX_DOM) !! One-character domain labels. / 用于文件名替换的单字符区域标识。
    end type config_type
@@ -95,7 +98,8 @@ module mod_namelist
    real(fp) :: mete_timedelta = 3600.0_fp
    character(len=256) :: mete_file = ''
 
-   character(len=126) :: out_file_name = 'naqp_d0[DOMAIN]_%Y%m%d%H.nc'
+   character(len=256) :: out_file = 'naqp_d0[DOMAIN]_%Y%m%d%H.nc'
+   real(fp) :: output_timedelta = 3600.0_fp
    character(len=256) :: static_grid_file = 'static_meta_d0[DOMAIN].nc'
 
    character(len=1) :: dom_str(MAX_DOM)
@@ -105,6 +109,7 @@ module mod_namelist
    real(fp) :: dts(MAX_DOM)      !! 各个区域的积分间隔
    integer :: nts(MAX_DOM)      !! 每个全局时间步内各区域的子步数
    integer :: nt      !! 全局时间迭代次数
+   integer :: mete_steps, output_steps, hourly_steps
 
    namelist /region/ ndom, nlev, we, sn, parent_id, parent_grid_ratio, i_parent_start, j_parent_start
    namelist /proj/ is_global, proj_id, xorg, yorg, ref_lat, ref_lon, truelat1, truelat2, delta
@@ -112,7 +117,7 @@ module mod_namelist
    namelist /physics/ twindow, nhalo
    namelist /chem/ chem_meta_file, ic_file, bc_file, emis_file, emis_nlev
    namelist /mete/ mete_table_file, mete_mapping_file, mete_source, mete_file, mete_timedelta
-   namelist /output/ out_file_name, static_grid_file
+   namelist /output/ out_file, output_timedelta, static_grid_file
 
 contains
 
@@ -137,10 +142,11 @@ contains
       config%ic_file = ic_file; config%bc_file = bc_file
       config%emis_nlev = emis_nlev; config%emis_file = emis_file
       config%mete_timedelta = mete_timedelta; config%mete_file = mete_file
-      config%out_file_name = out_file_name
+      config%out_file = out_file; config%output_timedelta = output_timedelta
       config%static_grid_file = static_grid_file
       config%dom_str = dom_str; config%deltas = deltas; config%xorgs = xorgs
       config%yorgs = yorgs; config%dts = dts; config%nts = nts; config%nt = nt
+      config%mete_steps = mete_steps; config%output_steps = output_steps
    end function load_config
 
    subroutine parse_namelist(filename)
@@ -192,7 +198,6 @@ contains
          call fatal_error('WRF meteorology requires mete_mapping_file')
       if (nhalo < 1 .or. twindow < 1) call fatal_error('nhalo and twindow must be positive')
       if (emis_nlev < 1 .or. emis_nlev > nlev) call fatal_error('emis_nlev must be between 1 and nlev')
-      if (mete_timedelta <= 0._fp) call fatal_error('mete_timedelta must be positive')
       do i = 2, ndom
          if (parent_id(i) < 1 .or. parent_id(i) >= i) call fatal_error('each nested domain must reference an earlier parent domain')
          if (parent_grid_ratio(i) < 1) call fatal_error('parent_grid_ratio must be positive')
@@ -212,6 +217,12 @@ contains
 
       run_minutes(1) = (run_days(1)*24.0_fp + run_hours(1))*60.0_fp + run_minutes(1)
       call calculate_time_steps(run_minutes(1), dt, nt, iostat, iomsg)
+      if (iostat /= 0) call fatal_error(trim(iomsg))
+      call calculate_interval_steps(mete_timedelta, dt, 'mete_timedelta', mete_steps, iostat, iomsg)
+      if (iostat /= 0) call fatal_error(trim(iomsg))
+      call calculate_interval_steps(output_timedelta, dt, 'output_timedelta', output_steps, iostat, iomsg)
+      if (iostat /= 0) call fatal_error(trim(iomsg))
+      call calculate_interval_steps(3600._fp, dt, 'hourly boundary and emission interval', hourly_steps, iostat, iomsg)
       if (iostat /= 0) call fatal_error(trim(iomsg))
 
       nts(1) = 1
@@ -261,5 +272,38 @@ contains
          errmsg = 'run duration must be an integer multiple of dt'
       end if
    end subroutine calculate_time_steps
+
+   subroutine calculate_interval_steps(interval_seconds, step_seconds, name, steps, stat, errmsg)
+      !! 将输入或输出间隔转换为整数个根时间步。
+      real(fp), intent(in) :: interval_seconds, step_seconds
+      character(len=*), intent(in) :: name
+      integer, intent(out) :: steps, stat
+      character(len=*), intent(out) :: errmsg
+
+      real(fp) :: exact_steps, tolerance
+
+      steps = 0
+      stat = 0
+      errmsg = ''
+      if (interval_seconds <= 0._fp) then
+         stat = 1
+         errmsg = trim(name)//' must be positive'
+         return
+      end if
+      if (step_seconds <= 0._fp) then
+         stat = 1
+         errmsg = 'time step dt must be positive'
+         return
+      end if
+
+      exact_steps = interval_seconds/step_seconds
+      steps = nint(exact_steps)
+      tolerance = 100._fp*epsilon(1._fp)*max(1._fp, abs(exact_steps))
+      if (abs(exact_steps - real(steps, fp)) > tolerance) then
+         stat = 1
+         steps = 0
+         errmsg = trim(name)//' must be an integer multiple of dt'
+      end if
+   end subroutine calculate_interval_steps
 
 end module mod_namelist

@@ -1,6 +1,6 @@
 module test_namelist
    use mod_const, only: fp
-   use mod_namelist, only: calculate_time_steps
+   use mod_namelist, only: calculate_time_steps, calculate_interval_steps
    use projection, only: create_proj, PROJ_ERR_CODE
    use testdrive, only: check, error_type, new_unittest, unittest_type
    implicit none
@@ -10,6 +10,7 @@ contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
       tests = [new_unittest('integral run duration', test_integral), new_unittest('nonintegral run duration', test_nonintegral), &
+               new_unittest('input and output intervals', test_intervals), &
                new_unittest('invalid projection code', test_projection)]
    end subroutine collect_tests
    subroutine test_integral(error)
@@ -26,6 +27,20 @@ contains
       call calculate_time_steps(10._fp, 420._fp, steps, stat, message)
       call check(error, stat /= 0 .and. len_trim(message) > 0, 'nonintegral duration was accepted')
    end subroutine test_nonintegral
+
+   subroutine test_intervals(error)
+      type(error_type), allocatable, intent(out) :: error
+      character(128) :: message
+      integer :: stat, steps
+
+      call calculate_interval_steps(3600._fp, 600._fp, 'output_timedelta', steps, stat, message)
+      call check(error, stat == 0 .and. steps == 6, 'hourly output interval did not produce six root steps')
+      if (allocated(error)) return
+      call calculate_interval_steps(1000._fp, 600._fp, 'mete_timedelta', steps, stat, message)
+      call check(error, stat /= 0 .and. index(message, 'integer multiple') > 0, &
+                 'nonintegral meteorology interval was not rejected')
+   end subroutine test_intervals
+
    subroutine test_projection(error)
       type(error_type), allocatable, intent(out) :: error
       integer :: stat

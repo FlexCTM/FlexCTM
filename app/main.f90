@@ -10,7 +10,7 @@ program main
    use mod_chem_csv, only: load_chem_table
    use mod_mete_type, only: mete_table_type, mete_mapping_table_type
    use mod_mete_csv, only: load_mete_table, load_mete_mapping_table, validate_mete_mapping
-   use mod_mete_diagnostic, only: diagnose_meteorology
+   use mod_mete_diagnostic, only: prepare_meteorology
 
    use mod_tool, only: get_filename
 
@@ -44,10 +44,10 @@ program main
    type(mete_mapping_table_type) :: mete_mapping !! WRF 接口映射表。
    type(chem_table_type) :: chem_meta  !! 污染物变量元信息
    type(datetime_type)  :: time0      !! 模式运行开始时间
-   type(datetime_type)  :: new_time   !! 单次迭代开始时间
-   type(datetime_type)  :: old_time   !! 单次迭代结束时间
-   type(datetime_type)  :: this_time  !! 当前时间
-   type(datetime_type)  :: next_time  !! 下一个时间
+   type(datetime_type)  :: new_time   !! 当前根时间步的结束时刻。
+   type(datetime_type)  :: old_time   !! 当前根时间步的开始时刻。
+   type(datetime_type)  :: this_time  !! 当前 domain 子步的开始时刻。
+   type(datetime_type)  :: next_time  !! 当前 domain 子步的结束时刻。
    type(datetime_type)  :: next_mete_time !! 下一个气象数据文件时间
    type(timedelta_type) :: timedelta !! 时间间隔
    real(fp) :: factor !! Linear meteorology interpolation weight [0,1]. / 气象场线性时间插值权重 [0,1]。
@@ -133,7 +133,7 @@ program main
                                        blocks(m)%coarse_edges(south)%bc, blocks(m)%coarse_edges(north)%bc)
             end if
          end if
-         if (old_time%minute == 0) then  ! 读取气象数据
+         if (mod(i, cfg%mete_steps) == 0) then ! 更新当前和下一输入时次的气象场。
             if (old_time == time0) then ! 第一次迭代，需要读取两个气象数据
                filename = old_time%format(get_filename(cfg%mete_file, domain=cfg%dom_str(m)))
                call read_mete_field(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), blocks(m), filename, mete_mapping)
@@ -150,8 +150,8 @@ program main
             blocks(m)%mete3d_2 = blocks(m)%mete3d
          end if
 
-         ! 诊断质量守恒
-         if (old_time%minute == 0) then  ! 更新排放数据(需要先更新气象数据, 单位转换)
+         ! 当前排放清单在每个整点更新。
+         if (old_time%minute == 0) then
             filename = old_time%format(get_filename(cfg%emis_file, domain=cfg%dom_str(m)))
             call update_emission(proc, proc%domains(m), proc%tiles(m), blocks(m), filename, cfg%emis_nlev)
          end if
@@ -166,35 +166,19 @@ program main
             this_time = old_time + create_timedelta(seconds=cfg%dts(m)*(j - 1))
             timedelta = next_mete_time - this_time
             factor = timedelta%total_seconds()/cfg%mete_timedelta
-            blocks(m)%mete2d = factor*blocks(m)%mete2d_1 + (1 - factor)*blocks(m)%mete2d_2
-            blocks(m)%mete3d = factor*blocks(m)%mete3d_1 + (1 - factor)*blocks(m)%mete3d_2
+            call prepare_meteorology(proc%tiles(m), blocks(m), factor, cfg%mete_timedelta, cfg%dts(m))
 
             ! 从气象场中计算时间变化率
             next_time = old_time + create_timedelta(seconds=cfg%dts(m)*j)
             timedelta = next_mete_time - next_time
             factor = timedelta%total_seconds()/cfg%mete_timedelta
-            blocks(m)%dzdt = factor*blocks(m)%mete3d_1(:, :, :, blocks(m)%m3d_idx%get('zt')) &
-                             + (1 - factor)*blocks(m)%mete3d_2(:, :, :, blocks(m)%m3d_idx%get('zt'))
-            blocks(m)%dzdt = (blocks(m)%dzdt - blocks(m)%zt)/cfg%dts(m)
             ! 气象模式在下一时刻给出的密度
             blocks(m)%rho_next = factor*blocks(m)%mete3d_1(:, :, :, blocks(m)%m3d_idx%get('rho')) &
                                  + (1 - factor)*blocks(m)%mete3d_2(:, :, :, blocks(m)%m3d_idx%get('rho'))
 
-            ! 交换风场数据, 大部分气象数据不需要做边界交换
-            call fill_halo(proc%tiles(m), blocks(m)%u)  ! nx, ny, nz
-            if (proc%tiles(m)%at_north_pole .or. proc%tiles(m)%at_south_pole) then ! 在极点交换的纬向风需要翻转
-               call fill_halo(proc%tiles(m), blocks(m)%v, is_v=.false.)
-            else
-               call fill_halo(proc%tiles(m), blocks(m)%v)
-            end if
-            call diagnose_meteorology(proc%tiles(m), blocks(m), cfg%dts(m))
-            ! 水平平流和扩散需要体积数据进行校正
-            call fill_halo(proc%tiles(m), blocks(m)%rho)
-            call fill_halo(proc%tiles(m), blocks(m)%volume)
-
-            ! 默认在整点写出过程更新前的当前时刻快照。
-            if (old_time%minute == 0 .and. old_time%second == 0 .and. j == 1) then
-               filename = old_time%format(get_filename(cfg%out_file_name, domain=cfg%dom_str(m)))
+            ! 初始快照记录积分开始前的浓度和同一时刻的气象场。
+            if (i == 0 .and. j == 1) then
+               filename = old_time%format(get_filename(cfg%out_file, domain=cfg%dom_str(m)))
                call write_model_output(proc, proc%domains(m), proc%tiles(m), blocks(m), filename)
             end if
 
@@ -260,6 +244,17 @@ program main
          end do LOOP_INTEGRAL
 
       end do LOOP_DOM
+
+      ! 所有 domain 均推进到 new_time 后，写出命中输出间隔的积分结果。
+      if (mod(i + 1, cfg%output_steps) == 0) then
+         do m = 1, cfg%ndom
+            timedelta = next_mete_time - new_time
+            factor = timedelta%total_seconds()/cfg%mete_timedelta
+            call prepare_meteorology(proc%tiles(m), blocks(m), factor, cfg%mete_timedelta, cfg%dts(m))
+            filename = new_time%format(get_filename(cfg%out_file, domain=cfg%dom_str(m)))
+            call write_model_output(proc, proc%domains(m), proc%tiles(m), blocks(m), filename)
+         end do
+      end if
 
    end do LOOP_TIME
 

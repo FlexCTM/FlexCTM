@@ -14,7 +14,7 @@ contains
    subroutine test_config(error)
       type(error_type), allocatable, intent(out) :: error
       type(config_type) :: config
-      config = load_config('global_mock.nml')
+      config = load_config('mock.nml')
       call check(error, config%ndom == 1 .and. config%we(1) == 360 .and. config%sn(1) == 180 .and. config%nlev == 20, &
                  'global MOCK grid dimensions are incorrect')
       if (.not. allocated(error)) call check(error, config%proj_id == 0 .and. config%is_global .and. &
@@ -25,6 +25,9 @@ contains
                     'global MOCK input paths are not configured consistently')
       if (.not. allocated(error)) call check(error, config%nt == 12 .and. abs(config%dts(1) - 600._fp) <= epsilon(1._fp), &
                     'global MOCK duration does not produce exactly twelve configured time steps')
+      if (.not. allocated(error)) call check(error, config%mete_steps == 6 .and. config%output_steps == 6 .and. &
+                           abs(config%output_timedelta - 3600._fp) <= epsilon(1._fp), &
+                    'global MOCK input or output interval is incorrect')
    end subroutine test_config
 end module test_global_config
 

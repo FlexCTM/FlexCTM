@@ -22,6 +22,8 @@ contains
       if (.not. allocated(error)) call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/region/wrf/') == 1 .and. &
                            index(config%emis_file, '/3clear/share/xiaolh/v3/region/emis/') == 1, &
                     'formal regional input paths changed unexpectedly')
+      if (.not. allocated(error)) call check(error, trim(config%out_file) == 'ctm_d0[DOMAIN]_%Y%m%d%H.nc', &
+                    'formal regional output file template is incorrect')
    end subroutine test_config
 end module test_region_namelist
 
