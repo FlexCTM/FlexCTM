@@ -191,6 +191,79 @@ def load_cartopy(enabled: bool):
     return ccrs, cfeature
 
 
+def find_data_range(
+    data: xr.DataArray, time_indices: list[int], level_index: int
+) -> tuple[float, float]:
+    minimum = np.inf
+    maximum = -np.inf
+    for time_index in time_indices:
+        field, _, _ = select_field(data, time_index, level_index)
+        values = np.asarray(field.values)
+        finite = values[np.isfinite(values)]
+        if finite.size:
+            minimum = min(minimum, float(finite.min()))
+            maximum = max(maximum, float(finite.max()))
+    if not np.isfinite(minimum) or not np.isfinite(maximum):
+        raise ValueError("selected field does not contain finite values")
+    return minimum, maximum
+
+
+def make_colour_scale(
+    args: argparse.Namespace, data_minimum: float, data_maximum: float
+) -> tuple[np.ndarray, str]:
+    if args.levels and (args.vmin is not None or args.vmax is not None):
+        raise ValueError("use either --levels or --vmin/--vmax, not both")
+
+    if args.levels:
+        levels = np.asarray(args.levels)
+    else:
+        lower = data_minimum if args.vmin is None else args.vmin
+        upper = data_maximum if args.vmax is None else args.vmax
+        if lower > upper or (lower == upper and (args.vmin is not None or args.vmax is not None)):
+            raise ValueError("colour minimum must be smaller than colour maximum")
+        if lower == upper:
+            margin = max(abs(lower)*0.01, 1.0e-12)
+            lower -= margin
+            upper += margin
+        levels = np.linspace(lower, upper, 21)
+
+    below = data_minimum < levels[0]
+    above = data_maximum > levels[-1]
+    if below and above:
+        extend = "both"
+    elif below:
+        extend = "min"
+    elif above:
+        extend = "max"
+    else:
+        extend = "neither"
+    return levels, extend
+
+
+def prepare_geographic_field(
+    longitude: np.ndarray, latitude: np.ndarray, values: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    middle_row = longitude[longitude.shape[0]//2, :]
+    differences = np.diff(middle_row)
+    regular_differences = np.abs(differences[np.abs(differences) < 180.0])
+    if not regular_differences.size:
+        return longitude, latitude, values
+
+    spacing = float(np.median(regular_differences))
+    is_global = np.isclose(spacing*longitude.shape[1], 360.0, atol=max(spacing*0.1, 1.0e-6))
+    if is_global:
+        order = np.argsort(middle_row)
+        longitude = longitude[:, order]
+        latitude = latitude[:, order]
+        values = values[:, order]
+        longitude = np.concatenate((longitude, longitude[:, :1] + 360.0), axis=1)
+        latitude = np.concatenate((latitude, latitude[:, :1]), axis=1)
+        values = np.ma.concatenate((values, values[:, :1]), axis=1)
+    elif np.any(np.abs(differences) >= 180.0):
+        longitude = np.rad2deg(np.unwrap(np.deg2rad(longitude), axis=1))
+    return longitude, latitude, values
+
+
 def output_path(args: argparse.Namespace, input_path: Path, time_index: int) -> Path:
     if args.output:
         return Path(args.output)
@@ -211,6 +284,8 @@ def render_plot(
     time_label: str | None,
     level_label: str | None,
     time_index: int,
+    colour_levels: np.ndarray,
+    colour_extend: str,
     ccrs,
     cfeature,
 ) -> Path:
@@ -218,19 +293,18 @@ def render_plot(
         raise ValueError("--coastlines requires longitude and latitude coordinates")
     unit = field.attrs.get("unit", field.attrs.get("units", ""))
     description = field.attrs.get("description", args.variable)
-
-    if args.levels and (args.vmin is not None or args.vmax is not None):
-        raise ValueError("use either --levels or --vmin/--vmax, not both")
+    values = np.ma.masked_invalid(values)
+    if geographic:
+        longitude, latitude, values = prepare_geographic_field(longitude, latitude, values)
 
     use_cartopy = args.coastlines
     subplot_kw = {"projection": ccrs.PlateCarree()} if use_cartopy else {}
     figure, axis = plt.subplots(figsize=(10, 5), subplot_kw=subplot_kw)
-    contour_options = {"cmap": args.cmap, "extend": "both"}
-    if args.levels:
-        contour_options["levels"] = args.levels
-    else:
-        contour_options["vmin"] = args.vmin
-        contour_options["vmax"] = args.vmax
+    contour_options = {
+        "cmap": args.cmap,
+        "extend": colour_extend,
+        "levels": colour_levels,
+    }
     if use_cartopy:
         contour_options["transform"] = ccrs.PlateCarree()
 
@@ -271,6 +345,8 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
 
         data = dataset[args.variable]
         time_indices = select_time_indices(data, args)
+        data_minimum, data_maximum = find_data_range(data, time_indices, args.level)
+        colour_levels, colour_extend = make_colour_scale(args, data_minimum, data_maximum)
         coordinates = None
         for time_index in time_indices:
             field, time_label, level_label = select_field(data, time_index, args.level)
@@ -290,6 +366,8 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
                     time_label,
                     level_label,
                     time_index,
+                    colour_levels,
+                    colour_extend,
                     ccrs,
                     cfeature,
                 )
