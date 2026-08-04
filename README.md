@@ -78,6 +78,14 @@ make debug PRECISION=real64
 make test PRECISION=real64
 ```
 
+Make 会优先检测 Intel MPI 的 `mpiifort`，否则使用 Open MPI 的
+`mpifort`。也可以显式指定工具链：
+
+```bash
+make release PRECISION=real64 COMPILER=intel FC=mpiifort
+make release PRECISION=real64 COMPILER=gnu FC=mpifort
+```
+
 Make 产物统一位于：
 
 ```text

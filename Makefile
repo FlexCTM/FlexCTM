@@ -4,17 +4,51 @@ PRECISION ?= real64
 .DEFAULT_GOAL := all
 
 # Compiler and external libraries
-FC := mpifort
 AR := ar
-COMPILER := gnu
+ifeq ($(origin COMPILER), undefined)
+  ifneq ($(shell command -v mpiifort 2>/dev/null),)
+    COMPILER := intel
+    FC := mpiifort
+  else ifneq ($(shell command -v mpifort 2>/dev/null),)
+    COMPILER := gnu
+    FC := mpifort
+  else
+    $(error No MPI Fortran compiler found: install mpiifort or mpifort)
+  endif
+endif
+
+ifeq ($(COMPILER),intel)
+  ifeq ($(origin FC),default)
+    FC := mpiifort
+  endif
+  COMPILER_FFLAGS := -no-wrap-margin
+  FPM_COMPILER := $(FC)
+  DEBUG_FFLAGS := -O0 -g -traceback -check all
+else ifeq ($(COMPILER),gnu)
+  ifeq ($(origin FC),default)
+    FC := mpifort
+  endif
+  COMPILER_FFLAGS := -ffree-line-length-none
+  FPM_COMPILER := $(shell $(FC) --showme:command 2>/dev/null)
+  MPI_FFLAGS := $(shell $(FC) --showme:compile 2>/dev/null)
+  MPI_LDFLAGS := $(addprefix -L,$(shell $(FC) --showme:libdirs 2>/dev/null))
+  DEBUG_FFLAGS := -O0 -g -fbacktrace -fcheck=all
+else
+  $(error Unsupported COMPILER='$(COMPILER)'; use intel or gnu)
+endif
+
 NETCDF_FFLAGS := $(shell nf-config --fflags)
-NETCDF_LDFLAGS := $(shell nf-config --flibs)
-FFLAGS := -ffree-line-length-none $(NETCDF_FFLAGS)
+# Debian/Ubuntu install the parallel C library in a non-default directory while
+# retaining the common NetCDF Fortran module.  Put that directory before the
+# paths emitted by nf-config when the caller requests the MPI implementation.
+NETCDF_MPI_LIBDIR ?=
+NETCDF_MPI_LDFLAGS := $(if $(NETCDF_MPI_LIBDIR),-L$(NETCDF_MPI_LIBDIR) -Xlinker -rpath -Xlinker $(NETCDF_MPI_LIBDIR))
+NETCDF_LDFLAGS := $(NETCDF_MPI_LDFLAGS) $(shell nf-config --flibs)
+FFLAGS := $(COMPILER_FFLAGS) $(NETCDF_FFLAGS)
 LDFLAGS := $(NETCDF_LDFLAGS)
 
-FPM_COMPILER := $(shell $(FC) --showme:command 2>/dev/null)
-FPM_FFLAGS := -ffree-line-length-none $(shell $(FC) --showme:compile 2>/dev/null) $(NETCDF_FFLAGS)
-FPM_LDFLAGS := $(addprefix -L,$(shell $(FC) --showme:libdirs 2>/dev/null)) $(NETCDF_LDFLAGS)
+FPM_FFLAGS := $(COMPILER_FFLAGS) $(MPI_FFLAGS) $(NETCDF_FFLAGS)
+FPM_LDFLAGS := $(MPI_LDFLAGS) $(NETCDF_LDFLAGS)
 
 ifeq ($(PRECISION),real32)
   PRECISION_FLAGS := -DFLEXCTM_REAL32 -DADVECTION_REAL32 -DDIFFUSION_REAL32 \
@@ -28,7 +62,7 @@ FFLAGS += $(PRECISION_FLAGS)
 FPM_FFLAGS += $(PRECISION_FLAGS)
 
 ifeq ($(BUILD),debug)
-  FFLAGS += -O0 -g -fbacktrace -fcheck=all
+  FFLAGS += $(DEBUG_FFLAGS)
 else ifeq ($(BUILD),release)
   FFLAGS += -O3
 else

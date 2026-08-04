@@ -41,6 +41,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NETCDF_MPI_LIBDIR: /usr/lib/x86_64-linux-gnu/netcdf/mpi/lib
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -51,7 +53,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gfortran openmpi-bin libopenmpi-dev libnetcdff-dev netcdf-bin
+          sudo apt-get install --yes gfortran openmpi-bin libopenmpi-dev libnetcdff-dev libnetcdf-mpi-dev netcdf-bin
 
       - name: Set up fpm
         uses: fortran-lang/setup-fpm@v10
