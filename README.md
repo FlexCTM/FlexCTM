@@ -198,10 +198,9 @@ python -m pip install numpy xarray netCDF4 matplotlib
 `merge.py` 将同一 domain、相同网格上的瞬时输出沿 `time` 维串联，便于使用 ncview 浏览。脚本逐时次写入结果，不会把全部模式输出同时装入内存。它不合并不同 domain，也不处理 MPI 分片；FlexCTM 的每个瞬时输出本身已经是完整的并行 NetCDF 文件。
 
 ```bash
-python utils/merge.py 'flexctm_global_mock_d01_*.nc' \
-  -o flexctm_global_mock_d01.nc
+python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc --overwrite
 
-ncview flexctm_global_mock_d01.nc
+ncview ctm_d01.nc
 ```
 
 输入通配符建议放在引号内，由脚本统一展开和排序。文件名中的 `YYYYMMDDHH`、`YYYYMMDDHHMM` 或 `YYYYMMDDHHMMSS` 会转换为 NetCDF 时间坐标。如果所有文件名都不含时间戳，`time` 使用从 0 开始的快照编号；不允许混合有时间戳和无时间戳的文件。默认保留所有变量；只合并部分变量时可重复使用 `--variable`：
@@ -218,13 +217,25 @@ python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc \
 `plot.py` 可以读取单个瞬时文件或 `merge.py` 生成的时间序列。模式输出不重复保存经纬度，因此绘图时通过 `--grid` 指定对应 domain 的静态网格文件；省略该参数时只能按 `x`、`y` 网格下标绘图：
 
 ```bash
-python utils/plot.py flexctm_global_mock_d01.nc O3 \
+python utils/plot.py ctm_d01.nc NO2 \
   --grid static_meta_d01.nc \
-  --time-index 2 --level 0 \
-  --output O3_2024010102.png
+  --time-index 1 --level 0 \
+  --output NO2_2024010213.png
 ```
 
-`--time-index` 和 `--level` 都从 0 开始。二维变量会忽略垂直层选择。可以使用 `--levels 0,10,20,40,80` 指定色阶，或使用 `--vmin`、`--vmax` 指定颜色范围。完整参数通过以下命令查看：
+`--time-index` 和 `--level` 都从 0 开始。对于按时间排序的 `ctm_d01_2024010212.nc`、`ctm_d01_2024010213.nc` 等文件，`time-index=0` 对应第一个文件，`time-index=1` 对应第二个文件。
+
+需要从第二个文件开始依次绘制到第 13 个文件时，可以执行：
+
+```bash
+for index in $(seq 1 12); do
+  python utils/plot.py ctm_d01.nc NO2 \
+    --grid static_meta_d01.nc \
+    --time-index "${index}" --level 0
+done
+```
+
+未指定 `--output` 时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。二维变量会忽略垂直层选择。可以使用 `--levels 0,10,20,40,80` 指定色阶，或使用 `--vmin`、`--vmax` 指定颜色范围。完整参数通过以下命令查看：
 
 ```bash
 python utils/merge.py --help
