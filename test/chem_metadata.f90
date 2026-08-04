@@ -8,26 +8,22 @@ module test_chem_metadata
 contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
-      tests = [new_unittest('valid chemical metadata', test_valid), &
-               new_unittest('invalid chemical metadata', test_invalid)]
+      tests = [new_unittest('valid chemical metadata', test_valid), new_unittest('invalid chemical metadata', test_invalid)]
    end subroutine collect_tests
 
    subroutine test_valid(error)
       type(error_type), allocatable, intent(out) :: error
       type(chem_table_type) :: table
       table = load_chem_table('meta/species.csv')
-      call check(error, table%nvar == 15 .and. table%ngas == 11 .and. &
-                        table%naerosol == 3 .and. table%ntransported == 15, &
+      call check(error, table%nvar == 15 .and. table%ngas == 11 .and. table%naerosol == 3 .and. table%ntransported == 15, &
                  'chemical metadata counts are incorrect')
       if (allocated(error)) return
-      call check(error, table%contain('rho') .and. table%idx('SO4') > 0, &
-                 'chemical metadata lookup failed')
+      call check(error, table%contain('rho') .and. table%idx('SO4') > 0, 'chemical metadata lookup failed')
       if (allocated(error)) return
       associate (rho => table%vars(table%idx('rho')))
          call check(error, rho%transported .and. rho%advected .and. rho%diffused .and. &
                            .not. rho%read_emission .and. .not. rho%use_chemistry .and. &
-                           .not. rho%dry_deposition .and. .not. rho%wet_deposition, &
-                    'rho is not a diagnostic transported variable')
+                           .not. rho%dry_deposition .and. .not. rho%wet_deposition, 'rho is not a diagnostic transported variable')
       end associate
       if (allocated(error)) return
       call check(error, table%nemission == 8 .and. table%nreactive == 14 .and. &
@@ -43,15 +39,12 @@ contains
       call execute_probe(executable, path//'-missing', exit_status)
       call check(error, exit_status /= 0, 'missing metadata was accepted')
       if (allocated(error)) return
-      call write_file(path, &
-         'X,gas,unknown,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,bad role')
+      call write_file(path, 'X,gas,unknown,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,bad role')
       call execute_probe(executable, path, exit_status)
       call check(error, exit_status /= 0, 'unknown chemical type was accepted')
       if (allocated(error)) return
-      call write_file(path, &
-         'X,gas,passive,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,first'// &
-         new_line('a')// &
-         'X,gas,passive,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,second')
+      call write_file(path, 'X,gas,passive,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,first'// &
+         new_line('a')// 'X,gas,passive,true,true,true,false,false,false,false,false,false,false,ug m-3,1.0,second')
       call execute_probe(executable, path, exit_status)
       call check(error, exit_status /= 0, 'duplicate chemical name was accepted')
       call delete_file(path)

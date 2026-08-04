@@ -40,38 +40,28 @@ contains
       real(fp), allocatable :: snapshot(:, :, :, :)
       real(fp) :: tolerance
       call setup(block_data, proc)
-      call block_data%mesh%init(-30._fp, -60._fp, 30._fp, &
-                                block_data%nx, block_data%ny, 0, projection_definition)
+      call block_data%mesh%init(-30._fp, -60._fp, 30._fp, block_data%nx, block_data%ny, 0, projection_definition)
       call generate_mock_static(block_data)
       call generate_mock_meteorology(block_data)
       tolerance = 100._fp*epsilon(1._fp)
-      call check(error, maxval(block_data%u) > minval(block_data%u) .and. &
-                        maxval(block_data%v) > minval(block_data%v) .and. &
+      call check(error, maxval(block_data%u) > minval(block_data%u) .and. maxval(block_data%v) > minval(block_data%v) .and. &
                         all(block_data%w == 0._fp), 'MOCK winds lack meaningful latitude structure')
-      if (.not. allocated(error)) &
-         call check(error, all(block_data%dz == 500._fp) .and. &
+      if (.not. allocated(error)) call check(error, all(block_data%dz == 500._fp) .and. &
                            all(block_data%zt(:, :, 2) == 1000._fp), 'MOCK vertical grid is incorrect')
-      if (.not. allocated(error)) &
-         call check(error, all(block_data%P(:, :, 2) < block_data%P(:, :, 1)) .and. &
-                           all(block_data%T(:, :, 2) < block_data%T(:, :, 1)), &
-                    'MOCK pressure or temperature is not monotonic')
-      if (.not. allocated(error)) &
-         call check(error, maxval(abs(block_data%rho - block_data%P/(Rd*block_data%T))) <= tolerance, &
+      if (.not. allocated(error)) call check(error, all(block_data%P(:, :, 2) < block_data%P(:, :, 1)) .and. &
+                           all(block_data%T(:, :, 2) < block_data%T(:, :, 1)), 'MOCK pressure or temperature is not monotonic')
+      if (.not. allocated(error)) call check(error, maxval(abs(block_data%rho - block_data%P/(Rd*block_data%T))) <= tolerance, &
                     'MOCK density violates the ideal-gas equation')
-      if (.not. allocated(error)) &
-         call check(error, all(ieee_is_finite(block_data%mete3d)) .and. &
+      if (.not. allocated(error)) call check(error, all(ieee_is_finite(block_data%mete3d)) .and. &
                            all(block_data%PSFC <= P00) .and. maxval(block_data%terrain) > 0._fp, &
                     'MOCK fields are not finite or static values are wrong')
       if (.not. allocated(error)) snapshot = block_data%mete3d
       if (.not. allocated(error)) block_data%mete3d = -999._fp
       if (.not. allocated(error)) call generate_mock_meteorology(block_data)
-      if (.not. allocated(error)) &
-         call check(error, &
-                    all(block_data%u == snapshot(:, :, :, block_data%m3d_idx%get('U'))) .and. &
+      if (.not. allocated(error)) call check(error, all(block_data%u == snapshot(:, :, :, block_data%m3d_idx%get('U'))) .and. &
                     all(block_data%rho == snapshot(:, :, :, block_data%m3d_idx%get('rho'))), &
                     'MOCK standard-field generation is not deterministic')
-      if (.not. allocated(error)) &
-         call check(error, all(block_data%volume == -999._fp), &
+      if (.not. allocated(error)) call check(error, all(block_data%volume == -999._fp), &
                     'MOCK generation modified a common diagnostic field')
       call block_data%clear()
       call proc%clear()

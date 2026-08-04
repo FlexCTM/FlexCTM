@@ -26,14 +26,10 @@ contains
       do k = 1, iblock%nz
          iblock%volume(:, :, k) = iblock%mesh%area*iblock%dz(:, :, k)
          if (iblock%mesh%proj_id > 0) then
-            call cal_kh_by_deformation_method( &
-               dt, iblock%mesh%xlen, iblock%mesh%ylen, &
-               iblock%u(:, :, k), iblock%v(:, :, k), &
+            call cal_kh_by_deformation_method( dt, iblock%mesh%xlen, iblock%mesh%ylen, iblock%u(:, :, k), iblock%v(:, :, k), &
                iblock%kx(:, :, k), iblock%ky(:, :, k), iblock%mesh%delta**2)
          else
-            call cal_kh_by_deformation_method( &
-               dt, iblock%mesh%xlen, iblock%mesh%ylen, &
-               iblock%u(:, :, k), iblock%v(:, :, k), &
+            call cal_kh_by_deformation_method( dt, iblock%mesh%xlen, iblock%mesh%ylen, iblock%u(:, :, k), iblock%v(:, :, k), &
                iblock%kx(:, :, k), iblock%ky(:, :, k))
          end if
       end do
@@ -43,20 +39,14 @@ contains
             u_mass = (iblock%u(i, j, :) + iblock%u(i - 1, j, :))/2._fp
             v_mass = (iblock%v(i, j, :) + iblock%v(i, j - 1, :))/2._fp
 
-            call cal_pbl_param( &
-               iblock%TSK(i, j), iblock%T(i, j, 1), &
-               iblock%PSFC(i, j)/100._fp, iblock%P(i, j, 1)/100._fp, &
-               iblock%dz(i, j, 1), &
-               sqrt(iblock%u(i, j, 1)**2 + iblock%v(i, j, 1)**2), &
-               iblock%mete2d(i, j, iblock%m2d_idx%get('z0')), iblock%PBL(i, j), &
-               iblock%Ri(i, j), iblock%ustar(i, j), &
+            call cal_pbl_param( iblock%TSK(i, j), iblock%T(i, j, 1), iblock%PSFC(i, j)/100._fp, iblock%P(i, j, 1)/100._fp, &
+               iblock%dz(i, j, 1), sqrt(iblock%u(i, j, 1)**2 + iblock%v(i, j, 1)**2), &
+               iblock%mete2d(i, j, iblock%m2d_idx%get('z0')), iblock%PBL(i, j), iblock%Ri(i, j), iblock%ustar(i, j), &
                iblock%RMOL(i, j), iblock%wstar(i, j))
 
-            call cal_Kz_by_YSU( &
-               iblock%PBL(i, j), iblock%Ri(i, j), iblock%ustar(i, j), &
+            call cal_Kz_by_YSU( iblock%PBL(i, j), iblock%Ri(i, j), iblock%ustar(i, j), &
                iblock%RMOL(i, j), iblock%wstar(i, j), iblock%zt(i, j, :), &
-               iblock%dz(i, j, :), u_mass, v_mass, iblock%thetav(i, j, :), &
-               iblock%kz(i, j, :))
+               iblock%dz(i, j, :), u_mass, v_mass, iblock%thetav(i, j, :), iblock%kz(i, j, :))
          end do
       end do
    end subroutine diagnose_meteorology

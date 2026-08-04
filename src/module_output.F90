@@ -33,14 +33,10 @@ contains
 
       if (proc%is_root()) write (*, *) 'write static: ', trim(filename)
       fh = open_nc_file(proc, domain, tile, filename)
-      call write_field(fh, 'mlat', iblock%mesh%mlat, &
-                       unit='degree', description='latitude of mass grid')
-      call write_field(fh, 'mlon', iblock%mesh%mlon, &
-                       unit='degree', description='longitude of mass grid')
-      call write_field(fh, 'area', iblock%mesh%area, &
-                       unit='m^2', description='grid-cell area')
-      call write_field(fh, 'terrain', iblock%terrain, &
-                       unit='m', description='terrain height')
+      call write_field(fh, 'mlat', iblock%mesh%mlat, unit='degree', description='latitude of mass grid')
+      call write_field(fh, 'mlon', iblock%mesh%mlon, unit='degree', description='longitude of mass grid')
+      call write_field(fh, 'area', iblock%mesh%area, unit='m^2', description='grid-cell area')
+      call write_field(fh, 'terrain', iblock%terrain, unit='m', description='terrain height')
       call close_nc_file(fh)
    end subroutine write_static_output
 
@@ -57,20 +53,17 @@ contains
 
       if (proc%is_root()) write (*, *) 'write output: ', trim(filename)
       fh = open_nc_file(proc, domain, tile, filename)
-      call write_chem_fields(fh, iblock%chem_meta, &
-                             iblock%chem3d(:, :, :, :, iblock%twindow))
+      call write_chem_fields(fh, iblock%chem_meta, iblock%chem3d(:, :, :, :, iblock%twindow))
 
       do n = 1, iblock%mete_table%n_2d
          if (iblock%mete_table%var2ds(n)%output) then
-            call write_field(fh, iblock%mete_table%var2ds(n)%name, &
-                             iblock%mete2d(:, :, n), iblock%mete_table%var2ds(n)%unit, &
+            call write_field(fh, iblock%mete_table%var2ds(n)%name, iblock%mete2d(:, :, n), iblock%mete_table%var2ds(n)%unit, &
                              iblock%mete_table%var2ds(n)%description)
          end if
       end do
       do n = 1, iblock%mete_table%n_3d
          if (iblock%mete_table%var3ds(n)%output) then
-            call write_field(fh, iblock%mete_table%var3ds(n)%name, &
-                             iblock%mete3d(:, :, :, n), iblock%mete_table%var3ds(n)%unit, &
+            call write_field(fh, iblock%mete_table%var3ds(n)%name, iblock%mete3d(:, :, :, n), iblock%mete_table%var3ds(n)%unit, &
                              iblock%mete_table%var3ds(n)%description)
          end if
       end do
@@ -114,8 +107,7 @@ contains
       call check_netcdf(nf90_enddef(fh%id), 'ending NetCDF define mode', fh%filename)
 
       ! Unlimited dimensions require collective writes
-      call check_netcdf(nf90_var_par_access(fh%id, varid, nf90_collective), &
-                 'setting collective access', fh%filename, varname)
+      call check_netcdf(nf90_var_par_access(fh%id, varid, nf90_collective), 'setting collective access', fh%filename, varname)
       ! The unlimited axis prevents independent write tests
       ! Re-enable the rank test if independent writes are used in the future
       ! NOTICE: fortran index starts form 1!
@@ -142,8 +134,7 @@ contains
       call check_netcdf(nf90_enddef(fh%id), 'ending NetCDF define mode', fh%filename)
 
       ! Unlimited dimensions require collective writes
-      call check_netcdf(nf90_var_par_access(fh%id, varid, nf90_collective), &
-                 'setting collective access', fh%filename, varname)
+      call check_netcdf(nf90_var_par_access(fh%id, varid, nf90_collective), 'setting collective access', fh%filename, varname)
       ! The unlimited axis prevents independent write tests
       ! Re-enable the rank test if independent writes are used in the future
       ! NOTICE: fortran index starts form 1!

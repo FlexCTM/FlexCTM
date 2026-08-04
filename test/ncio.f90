@@ -9,8 +9,7 @@ module test_ncio
 contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
-      tests = [new_unittest('optional open modes', test_open_modes), &
-               new_unittest('model NetCDF precision', test_precision)]
+      tests = [new_unittest('optional open modes', test_open_modes), new_unittest('model NetCDF precision', test_precision)]
    end subroutine collect_tests
 
    subroutine test_open_modes(error)
@@ -25,8 +24,7 @@ contains
       call resolve_nc_open_options(is_read=.true., open_existing=existing, read_only=read_only)
       call check_mode(error, existing, read_only, .true., .true.)
       if (allocated(error)) return
-      call resolve_nc_open_options(is_old=.false., is_read=.true., &
-                                   open_existing=existing, read_only=read_only)
+      call resolve_nc_open_options(is_old=.false., is_read=.true., open_existing=existing, read_only=read_only)
       call check_mode(error, existing, read_only, .true., .true.)
    end subroutine test_open_modes
 

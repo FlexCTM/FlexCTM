@@ -25,10 +25,8 @@ contains
 
       integer :: i, j, k, n, it
 
-      associate (vv => iblock%volume, c => iblock%chem3d, &
-                 u => iblock%u, v => iblock%v, t => iblock%twindow, &
-                 xlen => iblock%mesh%xlen, ylen => iblock%mesh%ylen, &
-                 dx => iblock%mesh%dx_mean, dy => iblock%mesh%dy_mean)
+      associate (vv => iblock%volume, c => iblock%chem3d, u => iblock%u, v => iblock%v, t => iblock%twindow, &
+                 xlen => iblock%mesh%xlen, ylen => iblock%mesh%ylen, dx => iblock%mesh%dx_mean, dy => iblock%mesh%dy_mean)
 
          do n = 1, iblock%chem_meta%nvar ! 不同污染物
             if (.not. iblock%chem_meta%vars(n)%advected) cycle
@@ -50,8 +48,7 @@ contains
             do k = 1, size(u, 3) ! 不同垂直层
                do j = tile%jbs, tile%jbe
                   ! 根据各高度和方向的风速确定稳定时间步长。
-                  call cal_cfl_time_step(xlen(:, j), u(:, j, k), &
-                                         dt, sdt, nt)
+                  call cal_cfl_time_step(xlen(:, j), u(:, j, k), dt, sdt, nt)
                   do it = 1, nt ! 确保满足CFL条件
                      call adv1d_by_ppm(sdt, dx(j), u(:, j, k), c(:, j, k, n, t), dc(:, j), volume=vv(:, j, k))
                   end do
@@ -70,9 +67,7 @@ contains
 
       integer :: i, j, k, n
 
-      associate (c => iblock%chem3d, u => iblock%u, &
-                 v => iblock%v, t => iblock%twindow, &
-                 vv => iblock%volume, rho => iblock%rho)
+      associate (c => iblock%chem3d, u => iblock%u, v => iblock%v, t => iblock%twindow, vv => iblock%volume, rho => iblock%rho)
          do n = 1, iblock%chem_meta%nvar ! 不同污染物
             if (.not. iblock%chem_meta%vars(n)%advected) cycle
             do k = 1, size(u, 3) ! 不同垂直层
@@ -131,9 +126,7 @@ contains
       real(fp) :: dz_next(iblock%nz) !! 下一时刻的网格垂直厚度；当前对不同变量存在重复计算。
       integer :: i, j, k, n, it
 
-      associate (vv => iblock%volume, c => iblock%chem3d, &
-                 w => iblock%w, t => iblock%twindow, &
-                 dz => iblock%dz, dzdt => iblock%dzdt)
+      associate (vv => iblock%volume, c => iblock%chem3d, w => iblock%w, t => iblock%twindow, dz => iblock%dz, dzdt => iblock%dzdt)
          do n = 1, iblock%chem_meta%nvar ! 不同污染物
             if (.not. iblock%chem_meta%vars(n)%advected) cycle
             if (iblock%chem_meta%vars(n)%name /= 'rho') then
@@ -152,8 +145,7 @@ contains
                      end do
                      if (n == 1) w(i, j, :) = w(i, j, :) - dzdt(i, j, :) ! terrain-following absolute height 坐标
                      ! 垂直分辨率很小（垂直风速通常也较小）。
-                     call cal_cfl_time_step(dz(i, j, :), w(i, j, :), &
-                                            dt, sdt, nt)
+                     call cal_cfl_time_step(dz(i, j, :), w(i, j, :), dt, sdt, nt)
                      do it = 1, nt ! 确保满足CFL条件
                         ! 平流项 dz在时间迭代前后, 会发生变化 (dzdt导致的dz变化), 会导致质量不守恒
                         call adv1d_by_ppm(sdt, dz(i, j, :), w(i, j, :), c(i, j, :, n, t), dc)
@@ -203,9 +195,7 @@ contains
             do i = ibs, ibe
                rhow = 0._fp ! 最底层风速为 0
                do k = 1, iblock%nz - 1 ! 求积分
-                  rho = (rho_mete(i, j, k)*dz(i, j, k + 1) + &
-                         rho_mete(i, j, k + 1)*dz(i, j, k))/ &
-                        (dz(i, j, k + 1) + dz(i, j, k))
+                  rho = (rho_mete(i, j, k)*dz(i, j, k + 1) + rho_mete(i, j, k + 1)*dz(i, j, k))/ (dz(i, j, k + 1) + dz(i, j, k))
                   rhow = rhow - ((rho_mete(i, j, k) - rho_cctm(i, j, k))/dt)*dz(i, j, k)
                   v(k) = rhow/rho ! rho*w = rhow, 注意等式左右两边的rho含义一样
                end do

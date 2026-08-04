@@ -31,12 +31,9 @@ contains
       call grid(1)%init(1, 2, 2, 2, parent_id=0)
       call proc%init(grid, 1, chemistry%nvar, is_global=.false.)
       call block_data%init(proc%bridges(1), proc%tiles(1), 2, 1, chemistry, table, 1)
-      call block_data%mesh%init(-20._fp, -20._fp, 10._fp, &
-                                block_data%nx, block_data%ny, 0, projection_definition)
-      call read_mete_field('mock', proc, proc%domains(1), proc%tiles(1), block_data, &
-                           '/tmp/this-file-must-not-exist.nc')
-      call read_mete_static('mock', proc, proc%domains(1), proc%tiles(1), block_data, &
-                            '/tmp/this-file-must-not-exist.nc')
+      call block_data%mesh%init(-20._fp, -20._fp, 10._fp, block_data%nx, block_data%ny, 0, projection_definition)
+      call read_mete_field('mock', proc, proc%domains(1), proc%tiles(1), block_data, '/tmp/this-file-must-not-exist.nc')
+      call read_mete_static('mock', proc, proc%domains(1), proc%tiles(1), block_data, '/tmp/this-file-must-not-exist.nc')
       call check(error, all(block_data%u > 0._fp) .and. all(block_data%terrain >= 0._fp), &
                  'MOCK dispatch attempted file I/O or returned wrong values')
       call block_data%clear()

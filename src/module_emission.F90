@@ -35,8 +35,7 @@ contains
 
       if (.not. does_file_exist(filename)) then
          if (proc%is_root()) then
-            write (*, '(A)') 'WARNING: emission file "'//trim(filename)// &
-                             '" does not exist; using deterministic MOCK emissions.'
+            write (*, '(A)') 'WARNING: emission file "'//trim(filename)// '" does not exist; using deterministic MOCK emissions.'
          end if
          call generate_mock_emission(iblock)
          return
@@ -48,8 +47,7 @@ contains
          if (iblock%chem_meta%vars(i)%read_emission) then
             ierr = nf90_inq_varid(fh%id, iblock%chem_meta%vars(i)%name, varid)
             if (ierr == nf90_noerr) then
-               call check_netcdf(nf90_get_var(fh%id, varid, &
-                                       iblock%emis3d(fh%ibs:fh%ibe, fh%jbs:fh%jbe, 1:nlev, i), &
+               call check_netcdf(nf90_get_var(fh%id, varid, iblock%emis3d(fh%ibs:fh%ibe, fh%jbs:fh%jbe, 1:nlev, i), &
                                        start=fh%start3d, count=fh%count3d), 'reading emission', &
                           filename, iblock%chem_meta%vars(i)%name)
             end if
@@ -72,10 +70,8 @@ contains
             do i = 1, iblock%nx
                latitude = iblock%mesh%mlat(i, j)
                longitude = iblock%mesh%mlon(i, j)
-               source_pattern = exp(-((longitude - 115._fp)/18._fp)**2 - &
-                                    ((latitude - 35._fp)/12._fp)**2) + &
-                                0.7_fp*exp(-((longitude + 80._fp)/22._fp)**2 - &
-                                           ((latitude - 40._fp)/14._fp)**2)
+               source_pattern = exp(-((longitude - 115._fp)/18._fp)**2 - ((latitude - 35._fp)/12._fp)**2) + &
+                                0.7_fp*exp(-((longitude + 80._fp)/22._fp)**2 - ((latitude - 40._fp)/14._fp)**2)
                iblock%emis3d(i, j, 1, n) = strength*source_pattern
             end do
          end do

@@ -9,8 +9,7 @@ module test_mete_csv
 contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
-      tests = [new_unittest('standard table parsing', test_standard), &
-               new_unittest('output flag parsing', test_output_flags), &
+      tests = [new_unittest('standard table parsing', test_standard), new_unittest('output flag parsing', test_output_flags), &
                new_unittest('WRF mapping parsing', test_mapping), &
                new_unittest('table and mapping compatibility', test_compatibility), &
                new_unittest('mapping dimension mismatch', test_dimension_mismatch), &
@@ -23,15 +22,12 @@ contains
       table = load_mete_table('meta/mete.standard.csv')
       call check(error, table%n_2d == 8 .and. table%n_3d == 14, 'wrong field counts')
       if (allocated(error)) return
-      call check(error, table%n_standard_2d == 4 .and. table%n_standard_3d == 9, &
-                 'wrong standard-field counts')
+      call check(error, table%n_standard_2d == 4 .and. table%n_standard_3d == 9, 'wrong standard-field counts')
       if (allocated(error)) return
-      call check(error, table%n_diagnostic_2d == 4 .and. table%n_diagnostic_3d == 5, &
-                 'wrong diagnostic-field counts')
+      call check(error, table%n_diagnostic_2d == 4 .and. table%n_diagnostic_3d == 5, 'wrong diagnostic-field counts')
       if (allocated(error)) return
       call check(error, table%var3ds(table%idx('rho'))%category == METE_STANDARD .and. &
-                        table%var3ds(table%idx('kz'))%category == METE_DIAGNOSTIC .and. &
-                        table%var3ds(table%idx('rho'))%output, &
+                        table%var3ds(table%idx('kz'))%category == METE_DIAGNOSTIC .and. table%var3ds(table%idx('rho'))%output, &
                  'field categories or output flags were parsed incorrectly')
    end subroutine test_standard
 
@@ -47,8 +43,7 @@ contains
       close (unit)
 
       table = load_mete_table(filename)
-      call check(error, table%var2ds(table%idx('enabled'))%output .and. &
-                        .not. table%var2ds(table%idx('disabled'))%output, &
+      call check(error, table%var2ds(table%idx('enabled'))%output .and. .not. table%var2ds(table%idx('disabled'))%output, &
                  'true/false output flags were parsed incorrectly')
 
       open (newunit=unit, file=filename, status='old')
@@ -63,8 +58,7 @@ contains
       call check(error, mapping%nvar == 13, 'wrong WRF mapping count')
       if (allocated(error)) return
       index = mapping%idx('T')
-      call check(error, size(mapping%vars(index)%inputs) == 3 .and. &
-                        trim(mapping%vars(index)%method) == 'wrf_air_temperature', &
+      call check(error, size(mapping%vars(index)%inputs) == 3 .and. trim(mapping%vars(index)%method) == 'wrf_air_temperature', &
                  'WRF temperature mapping was parsed incorrectly')
    end subroutine test_mapping
 
@@ -81,8 +75,7 @@ contains
       if (allocated(error)) return
       mapping%vars(mapping%idx('P'))%target_unit = 'hPa'
       call validate_mete_mapping(table, mapping, stat, message)
-      call check(error, stat /= 0 .and. index(message, 'unit mismatch') > 0, &
-                 'unit mismatch was not rejected')
+      call check(error, stat /= 0 .and. index(message, 'unit mismatch') > 0, 'unit mismatch was not rejected')
    end subroutine test_compatibility
 
    subroutine test_dimension_mismatch(error)
@@ -95,8 +88,7 @@ contains
       mapping = load_mete_mapping_table('meta/mete.wrf.csv')
       mapping%vars(mapping%idx('U'))%ndim = 2
       call validate_mete_mapping(table, mapping, stat, message)
-      call check(error, stat /= 0 .and. index(message, 'dimension mismatch') > 0, &
-                 'dimension mismatch was not rejected')
+      call check(error, stat /= 0 .and. index(message, 'dimension mismatch') > 0, 'dimension mismatch was not rejected')
    end subroutine test_dimension_mismatch
 
    subroutine test_dependency_order(error)
@@ -113,8 +105,7 @@ contains
       t_index = reordered%idx('T')
       reordered%vars([p_index, t_index]) = mapping%vars([t_index, p_index])
       call validate_mete_mapping(table, reordered, stat, message)
-      call check(error, stat /= 0 .and. index(message, 'must be generated before') > 0, &
-                 'dependency order error was not rejected')
+      call check(error, stat /= 0 .and. index(message, 'must be generated before') > 0, 'dependency order error was not rejected')
    end subroutine test_dependency_order
 end module test_mete_csv
 

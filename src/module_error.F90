@@ -1,8 +1,7 @@
 module mod_error
    !! 应用级不可恢复错误的统一出口。
    use, intrinsic :: iso_fortran_env, only: error_unit
-   use mpi, only: MPI_ABORT, MPI_COMM_RANK, MPI_COMM_WORLD, MPI_FINALIZED, &
-                  MPI_INITIALIZED, MPI_SUCCESS
+   use mpi, only: MPI_ABORT, MPI_COMM_RANK, MPI_COMM_WORLD, MPI_FINALIZED, MPI_INITIALIZED, MPI_SUCCESS
 
    implicit none
    private

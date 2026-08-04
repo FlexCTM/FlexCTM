@@ -23,11 +23,9 @@ contains
       call mesh%init(110._fp, 20._fp, 1._fp, 1, 1, 0, projection_definition)
       call check_mesh(error, mesh, 1, 1)
       if (allocated(error)) return
-      call check(error, abs(mesh%mlon(1, 1) - 110.5_fp) <= epsilon(1._fp), &
-                 'minimal-grid center longitude is incorrect')
+      call check(error, abs(mesh%mlon(1, 1) - 110.5_fp) <= epsilon(1._fp), 'minimal-grid center longitude is incorrect')
       if (allocated(error)) return
-      call check(error, abs(mesh%mlat(1, 1) - 20.5_fp) <= epsilon(1._fp), &
-                 'minimal-grid center latitude is incorrect')
+      call check(error, abs(mesh%mlat(1, 1) - 20.5_fp) <= epsilon(1._fp), 'minimal-grid center latitude is incorrect')
    end subroutine test_minimal_latlon
 
    subroutine test_regular_latlon(error)
@@ -42,8 +40,7 @@ contains
       type(error_type), allocatable, intent(out) :: error
       type(mesh_type) :: mesh
       type(proj_type) :: projection_definition
-      projection_definition = create_proj(PROJ_LCC, lon1=115._fp, lat1=30._fp, &
-                                          truelat1=20._fp, truelat2=40._fp)
+      projection_definition = create_proj(PROJ_LCC, lon1=115._fp, lat1=30._fp, truelat1=20._fp, truelat2=40._fp)
       call mesh%init(-5000._fp, -5000._fp, 10000._fp, 1, 1, PROJ_LCC, projection_definition)
       call check_mesh(error, mesh, 1, 1)
    end subroutine test_minimal_lambert
@@ -52,8 +49,7 @@ contains
       type(error_type), allocatable, intent(out) :: error
       type(mesh_type) :: mesh
       type(proj_type) :: projection_definition
-      projection_definition = create_proj(PROJ_LCC, lon1=115._fp, lat1=30._fp, &
-                                          truelat1=20._fp, truelat2=40._fp)
+      projection_definition = create_proj(PROJ_LCC, lon1=115._fp, lat1=30._fp, truelat1=20._fp, truelat2=40._fp)
       call mesh%init(-40000._fp, -30000._fp, 10000._fp, 8, 6, PROJ_LCC, projection_definition)
       call check_mesh(error, mesh, 8, 6)
    end subroutine test_regular_lambert
@@ -66,14 +62,11 @@ contains
       if (allocated(error)) return
       call check(error, all(shape(mesh%clon) == [nx + 1, ny + 1]), 'clon has the wrong shape')
       if (allocated(error)) return
-      call check(error, all(ieee_is_finite(mesh%mlon)) .and. all(ieee_is_finite(mesh%mlat)), &
-                 'mass-grid coordinates must be finite')
+      call check(error, all(ieee_is_finite(mesh%mlon)) .and. all(ieee_is_finite(mesh%mlat)), 'mass-grid coordinates must be finite')
       if (allocated(error)) return
-      call check(error, all(ieee_is_finite(mesh%area)) .and. all(mesh%area > 0._fp), &
-                 'grid-cell areas must be finite and positive')
+      call check(error, all(ieee_is_finite(mesh%area)) .and. all(mesh%area > 0._fp), 'grid-cell areas must be finite and positive')
       if (allocated(error)) return
-      call check(error, all(ieee_is_finite(mesh%xlen)) .and. all(ieee_is_finite(mesh%ylen)), &
-                 'grid-cell lengths must be finite')
+      call check(error, all(ieee_is_finite(mesh%xlen)) .and. all(ieee_is_finite(mesh%ylen)), 'grid-cell lengths must be finite')
    end subroutine check_mesh
 end module test_mesh
 

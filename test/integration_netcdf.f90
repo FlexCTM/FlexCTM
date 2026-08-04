@@ -3,12 +3,13 @@ module test_integration_netcdf
    use mod_const, only: fp
    use mod_mete_csv, only: load_mete_table
    use mod_mete_type, only: mete_table_type
+   use mod_ncio, only: nc_type, check_netcdf, open_nc_file, close_nc_file
    use mod_ncio, only: model_netcdf_type
    use mod_output, only: write_static_output, write_model_output
    use mod_chem_type, only: chem_table_type
    use mod_chem_csv, only: load_chem_table
-   use netcdf, only: nf90_close, nf90_get_var, nf90_inq_varid, &
-                     nf90_inquire_variable, nf90_noerr, nf90_nowrite, nf90_open
+   use netcdf, only: nf90_clobber, nf90_close, nf90_create, nf90_def_dim, nf90_enddef, &
+                     nf90_get_var, nf90_inq_varid, nf90_inquire_variable, nf90_noerr, nf90_nowrite, nf90_open
    use mpi, only: MPI_Barrier
    use parallel, only: grid_meta_type, process_type
    use projection, only: proj_type
@@ -32,20 +33,35 @@ contains
       type(grid_meta_type) :: grid(1)
       type(process_type) :: proc
       type(proj_type) :: projection_definition
+      type(nc_type) :: fh
       real(fp) :: readback(4, 4)
-      integer :: ncid, varid, xtype, status
+      integer :: ncid, varid, xtype, status, dimid
 
       write (filename, '(A,I0,A)') '/tmp/flexctm-test-static-', storage_size(0._fp), '.nc'
       chemistry = load_chem_table('meta/species.csv')
       meteorology = load_mete_table('meta/mete.standard.csv')
       call grid(1)%init(1, 4, 4, 2, parent_id=0)
       call proc%init(grid, 1, chemistry%nvar, is_global=.false.)
-      call block_data%init(proc%bridges(1), proc%tiles(1), 2, 1, &
-                           chemistry, meteorology, 1)
-      call block_data%mesh%init(-3._fp, -3._fp, 1._fp, block_data%nx, block_data%ny, &
-                                0, projection_definition)
+      call block_data%init(proc%bridges(1), proc%tiles(1), 2, 1, chemistry, meteorology, 1)
+      call block_data%mesh%init(-3._fp, -3._fp, 1._fp, block_data%nx, block_data%ny, 0, projection_definition)
       block_data%terrain = 7.5_fp
 
+      ! Read-only external inputs may use dataset-native dimension names.
+      write (filename, '(A,I0,A)') '/tmp/flexctm-test-wrf-input-', storage_size(0._fp), '.nc'
+      if (proc%is_root()) then
+         call check_netcdf(nf90_create(filename, nf90_clobber, ncid), 'creating WRF-like test input', filename)
+         call check_netcdf(nf90_def_dim(ncid, 'west_east', 4, dimid), 'defining west_east', filename)
+         call check_netcdf(nf90_def_dim(ncid, 'south_north', 4, dimid), 'defining south_north', filename)
+         call check_netcdf(nf90_def_dim(ncid, 'bottom_top', 2, dimid), 'defining bottom_top', filename)
+         call check_netcdf(nf90_enddef(ncid), 'ending WRF-like define mode', filename)
+         call check_netcdf(nf90_close(ncid), 'closing WRF-like test input', filename)
+      end if
+      call MPI_Barrier(proc%model%comm, status)
+      fh = open_nc_file(proc, proc%domains(1), proc%tiles(1), filename, is_read=.true.)
+      call close_nc_file(fh)
+      call delete_output(proc, filename)
+
+      write (filename, '(A,I0,A)') '/tmp/flexctm-test-static-', storage_size(0._fp), '.nc'
       call write_static_output(proc, proc%domains(1), proc%tiles(1), block_data, filename)
 
       status = nf90_open(filename, nf90_nowrite, ncid)
@@ -56,13 +72,11 @@ contains
       end if
       if (.not. allocated(error)) then
          status = nf90_inquire_variable(ncid, varid, xtype=xtype)
-         call check(error, status == nf90_noerr .and. xtype == model_netcdf_type, &
-                    'NetCDF variable has the wrong storage type')
+         call check(error, status == nf90_noerr .and. xtype == model_netcdf_type, 'NetCDF variable has the wrong storage type')
       end if
       if (.not. allocated(error)) then
          status = nf90_get_var(ncid, varid, readback)
-         call check(error, status == nf90_noerr .and. &
-                    all(abs(readback - 7.5_fp) <= epsilon(1._fp)), &
+         call check(error, status == nf90_noerr .and. all(abs(readback - 7.5_fp) <= epsilon(1._fp)), &
                     'NetCDF round trip changed field values')
       end if
       status = nf90_close(ncid)

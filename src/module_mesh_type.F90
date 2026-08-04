@@ -94,15 +94,11 @@ contains
             do i = 1, this%nx + 1 ! 内循环，列优先
                x = this%xorg + (i - 0.5)*delta
                x_dash = this%xorg + (i - 1)*delta
-               call p%xy_to_ll(x_dash, y_dash, this%clon(i, j), this%clat(i, j), &
-                               stat=proj_stat, errmsg=proj_message)
-               if (proj_stat /= PROJ_SUCCESS) &
-                  call fatal_error('corner-coordinate projection failed: '//proj_message)
+               call p%xy_to_ll(x_dash, y_dash, this%clon(i, j), this%clat(i, j), stat=proj_stat, errmsg=proj_message)
+               if (proj_stat /= PROJ_SUCCESS) call fatal_error('corner-coordinate projection failed: '//proj_message)
                if (j <= this%ny .and. i <= this%nx) then
-                  call p%xy_to_ll(x, y, this%mlon(i, j), this%mlat(i, j), &
-                                  stat=proj_stat, errmsg=proj_message)
-                  if (proj_stat /= PROJ_SUCCESS) &
-                     call fatal_error('mass-coordinate projection failed: '//proj_message)
+                  call p%xy_to_ll(x, y, this%mlon(i, j), this%mlat(i, j), stat=proj_stat, errmsg=proj_message)
+                  if (proj_stat /= PROJ_SUCCESS) call fatal_error('mass-coordinate projection failed: '//proj_message)
                end if
             end do
          end do

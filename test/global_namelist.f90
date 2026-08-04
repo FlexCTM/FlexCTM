@@ -18,11 +18,9 @@ contains
       call check(error, config%we(1) == 360 .and. config%sn(1) == 180 .and. &
                         config%nlev == 50 .and. abs(config%delta - 1._fp) <= epsilon(1._fp), &
                  'formal global grid changed unexpectedly')
-      if (.not. allocated(error)) &
-         call check(error, trim(config%mete_source) == 'wrf', &
+      if (.not. allocated(error)) call check(error, trim(config%mete_source) == 'wrf', &
                     'formal global meteorology source is incorrect')
-      if (.not. allocated(error)) &
-         call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/global/wrf/') == 1 .and. &
+      if (.not. allocated(error)) call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/global/wrf/') == 1 .and. &
                            index(config%emis_file, '/3clear/share/xiaolh/v3/global/emis/') == 1, &
                     'formal global input paths changed unexpectedly')
    end subroutine test_config

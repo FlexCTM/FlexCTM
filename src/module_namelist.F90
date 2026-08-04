@@ -160,8 +160,7 @@ contains
          call fatal_error('a namelist file path is required as the first command-line argument')
       end if
 
-      open (newunit=unit, file=trim(namelist_path), status='old', action='read', &
-            iostat=iostat, iomsg=iomsg)
+      open (newunit=unit, file=trim(namelist_path), status='old', action='read', iostat=iostat, iomsg=iomsg)
       if (iostat /= 0) call fatal_error('cannot open namelist file "'//trim(namelist_path)//'": '//trim(iomsg))
       read (unit, nml=region, iostat=iostat, iomsg=iomsg)
       if (iostat /= 0) call fatal_error('cannot read &region from "'//trim(namelist_path)//'": '//trim(iomsg))
@@ -182,25 +181,20 @@ contains
 
       if (ndom < 1 .or. ndom > MAX_DOM) call fatal_error('ndom must be between 1 and 8')
       if (nlev < 1) call fatal_error('nlev must be positive')
-      if (any(we(:ndom) < 1) .or. any(sn(:ndom) < 1)) &
-         call fatal_error('all configured horizontal grid sizes must be positive')
+      if (any(we(:ndom) < 1) .or. any(sn(:ndom) < 1)) call fatal_error('all configured horizontal grid sizes must be positive')
       if (delta <= 0.0_fp) call fatal_error('grid spacing delta must be positive')
-      if (proj_id /= latlon .and. proj_id /= lcc) &
-         call fatal_error('proj_id must be 0 (latlon) or 1 (LCC)')
+      if (proj_id /= latlon .and. proj_id /= lcc) call fatal_error('proj_id must be 0 (latlon) or 1 (LCC)')
       if (len_trim(start_time) == 0) call fatal_error('start_time must be configured')
       if (len_trim(chem_meta_file) == 0 .or. len_trim(mete_table_file) == 0) &
          call fatal_error('chemical metadata and meteorology table paths must be configured')
-      if (trim(mete_source) /= 'wrf' .and. trim(mete_source) /= 'mock') &
-         call fatal_error('mete_source must be "wrf" or "mock"')
+      if (trim(mete_source) /= 'wrf' .and. trim(mete_source) /= 'mock') call fatal_error('mete_source must be "wrf" or "mock"')
       if (trim(mete_source) == 'wrf' .and. len_trim(mete_mapping_file) == 0) &
          call fatal_error('WRF meteorology requires mete_mapping_file')
       if (nhalo < 1 .or. twindow < 1) call fatal_error('nhalo and twindow must be positive')
-      if (emis_nlev < 1 .or. emis_nlev > nlev) &
-         call fatal_error('emis_nlev must be between 1 and nlev')
+      if (emis_nlev < 1 .or. emis_nlev > nlev) call fatal_error('emis_nlev must be between 1 and nlev')
       if (mete_timedelta <= 0._fp) call fatal_error('mete_timedelta must be positive')
       do i = 2, ndom
-         if (parent_id(i) < 1 .or. parent_id(i) >= i) &
-            call fatal_error('each nested domain must reference an earlier parent domain')
+         if (parent_id(i) < 1 .or. parent_id(i) >= i) call fatal_error('each nested domain must reference an earlier parent domain')
          if (parent_grid_ratio(i) < 1) call fatal_error('parent_grid_ratio must be positive')
       end do
 

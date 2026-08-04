@@ -9,8 +9,7 @@ module test_namelist
 contains
    subroutine collect_tests(tests)
       type(unittest_type), allocatable, intent(out) :: tests(:)
-      tests = [new_unittest('integral run duration', test_integral), &
-               new_unittest('nonintegral run duration', test_nonintegral), &
+      tests = [new_unittest('integral run duration', test_integral), new_unittest('nonintegral run duration', test_nonintegral), &
                new_unittest('invalid projection code', test_projection)]
    end subroutine collect_tests
    subroutine test_integral(error)
@@ -36,8 +35,7 @@ contains
          type(proj_type) :: map
          map = create_proj(-1, stat=stat, errmsg=message)
       end block
-      call check(error, stat == PROJ_ERR_CODE .and. len(message) > 0, &
-                 'invalid projection did not return a diagnostic')
+      call check(error, stat == PROJ_ERR_CODE .and. len(message) > 0, 'invalid projection did not return a diagnostic')
    end subroutine test_projection
 end module test_namelist
 

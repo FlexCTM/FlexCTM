@@ -41,8 +41,7 @@ contains
             ierr = nf90_inq_varid(fh%id, iblock%chem_meta%vars(i)%name, varid)
             if (ierr == nf90_noerr) then
                if (proc%is_root()) write (*, *) '       **reading init: ', iblock%chem_meta%vars(i)%name
-               call check_netcdf(nf90_get_var(fh%id, varid, &
-                                       iblock%chem3d(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :, i, t), &
+               call check_netcdf(nf90_get_var(fh%id, varid, iblock%chem3d(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :, i, t), &
                                        start=fh%start3d, count=fh%count3d), 'reading initial field', &
                           filename, iblock%chem_meta%vars(i)%name)
             end if

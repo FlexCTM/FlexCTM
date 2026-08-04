@@ -62,8 +62,7 @@ program main
 
    cfg = load_config()
    if (cfg%proj_id /= 0) then
-      p = create_proj(cfg%proj_id, lon1=cfg%ref_lon, lat1=cfg%ref_lat, &
-                      truelat1=cfg%truelat1, truelat2=cfg%truelat2, &
+      p = create_proj(cfg%proj_id, lon1=cfg%ref_lon, lat1=cfg%ref_lat, truelat1=cfg%truelat1, truelat2=cfg%truelat2, &
                       stat=proj_stat, errmsg=proj_message)
       if (proj_stat /= PROJ_SUCCESS) call fatal_error('invalid projection configuration: '//proj_message)
    end if
@@ -79,8 +78,7 @@ program main
    ! 初始化MPI: 需要支持不同网格的配置
    allocate (grid_metas(cfg%ndom))
    do m = 1, cfg%ndom
-      call grid_metas(m)%init(m, cfg%we(m), cfg%sn(m), cfg%nlev, &
-                              cfg%i_parent_start(m), cfg%j_parent_start(m), &
+      call grid_metas(m)%init(m, cfg%we(m), cfg%sn(m), cfg%nlev, cfg%i_parent_start(m), cfg%j_parent_start(m), &
                               cfg%parent_grid_ratio(m))
    end do
    call proc%init(grid_metas, cfg%nhalo, nvar=chem_meta%nvar, is_global=cfg%is_global)
@@ -92,12 +90,10 @@ program main
    ! 分配资源, 初始化网格信息
    allocate (blocks(cfg%ndom))
    do m = 1, cfg%ndom
-      call blocks(m)%init(proc%bridges(m), proc%tiles(m), proc%domains(m)%nz, &
-                          proc%nhalo, chem_meta, mete_table, cfg%twindow)
+      call blocks(m)%init(proc%bridges(m), proc%tiles(m), proc%domains(m)%nz, proc%nhalo, chem_meta, mete_table, cfg%twindow)
       blocks(m)%xorg = cfg%xorgs(m) + (proc%tiles(m)%ids - 1 - cfg%nhalo)*cfg%deltas(m) ! 考虑halo
       blocks(m)%yorg = cfg%yorgs(m) + (proc%tiles(m)%jds - 1 - cfg%nhalo)*cfg%deltas(m)
-      call blocks(m)%mesh%init(blocks(m)%xorg, blocks(m)%yorg, cfg%deltas(m), &
-                               blocks(m)%nx, blocks(m)%ny, cfg%proj_id, p)
+      call blocks(m)%mesh%init(blocks(m)%xorg, blocks(m)%yorg, cfg%deltas(m), blocks(m)%nx, blocks(m)%ny, cfg%proj_id, p)
 
       ! 交换边界处的网格信息
       call fill_halo(proc%tiles(m), blocks(m)%mesh%area)
@@ -108,13 +104,11 @@ program main
    ! 初始化浓度场 .or. restart, 静态数据
    time0 = create_datetime(cfg%start_time, '%Y%m%d%H')
    do m = 1, cfg%ndom
-      call initialize_chemistry(proc, proc%domains(m), proc%tiles(m), &
-                                blocks(m), get_filename(cfg%ic_file, domain=cfg%dom_str(m)))
+      call initialize_chemistry(proc, proc%domains(m), proc%tiles(m), blocks(m), get_filename(cfg%ic_file, domain=cfg%dom_str(m)))
 
       ! 静态数据
       filename = time0%format(get_filename(cfg%mete_file, domain=cfg%dom_str(m)))
-      call read_mete_static(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), &
-                            blocks(m), filename)
+      call read_mete_static(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), blocks(m), filename)
 
       ! 写出静态网格数据。
       filename = get_filename(cfg%static_grid_file, domain=cfg%dom_str(m))
@@ -131,12 +125,10 @@ program main
       do m = 1, cfg%ndom
          if (.not. proc%domains(m)%is_global) then
             if (m == 1) then ! 更新边界: 需要气象数据和上一次时次的浓度数据
-               if (old_time%minute == 0) &
-                  call read_domain_boundary(proc%tiles(m), blocks(m), old_time%format(cfg%bc_file))
+               if (old_time%minute == 0) call read_domain_boundary(proc%tiles(m), blocks(m), old_time%format(cfg%bc_file))
             else
                ! 从父区域收集当前区域的边界数据；使用父区域上一时刻的边界值。
-               call get_bc_from_parent(proc, proc%bridges(m), &
-                                       blocks(cfg%parent_id(m))%chem3d(:, :, :, :, cfg%twindow), &
+               call get_bc_from_parent(proc, proc%bridges(m), blocks(cfg%parent_id(m))%chem3d(:, :, :, :, cfg%twindow), &
                                        blocks(m)%coarse_edges(west)%bc, blocks(m)%coarse_edges(east)%bc, &
                                        blocks(m)%coarse_edges(south)%bc, blocks(m)%coarse_edges(north)%bc)
             end if
@@ -144,8 +136,7 @@ program main
          if (old_time%minute == 0) then  ! 读取气象数据
             if (old_time == time0) then ! 第一次迭代，需要读取两个气象数据
                filename = old_time%format(get_filename(cfg%mete_file, domain=cfg%dom_str(m)))
-               call read_mete_field(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), &
-                                    blocks(m), filename, mete_mapping)
+               call read_mete_field(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), blocks(m), filename, mete_mapping)
                blocks(m)%mete2d_1 = blocks(m)%mete2d
                blocks(m)%mete3d_1 = blocks(m)%mete3d
             else
@@ -154,8 +145,7 @@ program main
             end if
             next_mete_time = old_time + create_timedelta(seconds=cfg%mete_timedelta)
             filename = next_mete_time%format(get_filename(cfg%mete_file, domain=cfg%dom_str(m)))
-            call read_mete_field(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), &
-                                 blocks(m), filename, mete_mapping)
+            call read_mete_field(cfg%mete_source, proc, proc%domains(m), proc%tiles(m), blocks(m), filename, mete_mapping)
             blocks(m)%mete2d_2 = blocks(m)%mete2d
             blocks(m)%mete3d_2 = blocks(m)%mete3d
          end if
@@ -163,8 +153,7 @@ program main
          ! 诊断质量守恒
          if (old_time%minute == 0) then  ! 更新排放数据(需要先更新气象数据, 单位转换)
             filename = old_time%format(get_filename(cfg%emis_file, domain=cfg%dom_str(m)))
-            call update_emission(proc, proc%domains(m), proc%tiles(m), &
-                                 blocks(m), filename, cfg%emis_nlev)
+            call update_emission(proc, proc%domains(m), proc%tiles(m), blocks(m), filename, cfg%emis_nlev)
          end if
       end do
 
@@ -209,7 +198,8 @@ program main
                call write_model_output(proc, proc%domains(m), proc%tiles(m), blocks(m), filename)
             end if
 
-            ! 一致性问题, 通过CCTM和气象模式模拟的密度差来诊断垂直速度, 相当于每一步都重新初始化
+            ! 通过 CCTM 与气象模式的密度差诊断垂直速度。
+            ! 当前每个时间步都重新初始化模式密度。
             if (chem_meta%contain("rho")) blocks(m)%rho_cctm = blocks(m)%rho
 
             if (proc%is_root()) write (*, *) "Start updating concentration"
@@ -252,8 +242,7 @@ program main
 
             if (proc%is_root()) write (*, *) "z advection"
             ! 空气质量模式 和 气象模式的一致性问题。
-            if (chem_meta%contain("rho")) &
-               call cal_w_by_rho(proc%tiles(m), blocks(m), cfg%nhalo, cfg%dts(m))
+            if (chem_meta%contain("rho")) call cal_w_by_rho(proc%tiles(m), blocks(m), cfg%nhalo, cfg%dts(m))
             ! 垂直平流最后执行，以统一处理垂直坐标变化引起的浓度变化。
             call drive_vadv_by_ppm(proc%tiles(m), blocks(m), cfg%dts(m))
 

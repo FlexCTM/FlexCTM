@@ -61,8 +61,7 @@ contains
 
       required = .false.
       if (present(must)) required = must
-      if (required .and. .not. lstat) &
-         call fatal_error('required file does not exist: "'//trim(filename)//'"')
+      if (required .and. .not. lstat) call fatal_error('required file does not exist: "'//trim(filename)//'"')
    end function does_file_exist
 
 end module mod_tool

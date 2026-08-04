@@ -32,8 +32,7 @@ contains
       type(nc_type) :: fh
       integer :: n
 
-      if (.not. does_file_exist(filename)) &
-         call fatal_error('required meteorology file does not exist: "'//trim(filename)//'"')
+      if (.not. does_file_exist(filename)) call fatal_error('required meteorology file does not exist: "'//trim(filename)//'"')
 
       fh = open_nc_file(proc, domain, tile, filename, is_read=.true.)
       do n = 1, mapping%nvar
@@ -82,8 +81,7 @@ contains
          call allocate_raw(iblock, first)
          call read_raw_3d(fh, raw_name(item, 1), first)
          call read_raw_scalar(fh, raw_name(item, 2), scalar)
-         iblock%mete3d(:, :, :, index) = &
-            (first + scalar)*(iblock%P/P00)**R_cp
+         iblock%mete3d(:, :, :, index) = (first + scalar)*(iblock%P/P00)**R_cp
       case ('ideal_gas_density')
          iblock%mete3d(:, :, :, index) = iblock%P/(Rd*iblock%T)
       case ('wrf_virtual_theta')
@@ -98,15 +96,11 @@ contains
          call read_raw_3d(fh, raw_name(item, 2), second, interfaces=.true.)
          if (trim(item%method) == 'wrf_layer_thickness') then
             do k = 1, iblock%nz
-               iblock%mete3d(:, :, k, index) = &
-                  (first(:, :, k + 1) + second(:, :, k + 1) - &
-                   first(:, :, k) - second(:, :, k))/g
+               iblock%mete3d(:, :, k, index) = (first(:, :, k + 1) + second(:, :, k + 1) - first(:, :, k) - second(:, :, k))/g
             end do
          else
             do k = 1, iblock%nz
-               iblock%mete3d(:, :, k, index) = &
-                  (first(:, :, k + 1) + second(:, :, k + 1) - &
-                   first(:, :, 1) - second(:, :, 1))/g
+               iblock%mete3d(:, :, k, index) = (first(:, :, k + 1) + second(:, :, k + 1) - first(:, :, 1) - second(:, :, 1))/g
             end do
          end if
       case default
@@ -119,8 +113,7 @@ contains
       integer, intent(in) :: position
       character(len=32) :: name
 
-      if (position > size(item%inputs)) &
-         call fatal_error('not enough inputs for WRF mapping "'//trim(item%name)//'"')
+      if (position > size(item%inputs)) call fatal_error('not enough inputs for WRF mapping "'//trim(item%name)//'"')
       if (item%inputs(position)%source /= METE_INPUT_RAW) &
          call fatal_error('WRF mapping method expected a raw input for "'//trim(item%name)//'"')
       name = item%inputs(position)%name
@@ -154,10 +147,8 @@ contains
       real(fp), intent(out) :: value
       integer :: varid
 
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
-      call check_netcdf(nf90_get_var(fh%id, varid, value), &
-                        'reading WRF scalar', fh%filename, name)
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_get_var(fh%id, varid, value), 'reading WRF scalar', fh%filename, name)
    end subroutine read_raw_scalar
 
    subroutine read_raw_2d(fh, name, field)
@@ -166,11 +157,8 @@ contains
       real(fp), intent(inout) :: field(:, :)
       integer :: varid
 
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
-      call check_netcdf(nf90_get_var(fh%id, varid, &
-         field(fh%ibs:fh%ibe, fh%jbs:fh%jbe), &
-         start=fh%start2d, count=fh%count2d), &
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs:fh%ibe, fh%jbs:fh%jbe), start=fh%start2d, count=fh%count2d), &
          'reading WRF variable', fh%filename, name)
    end subroutine read_raw_2d
 
@@ -185,11 +173,8 @@ contains
       if (present(interfaces)) then
          if (interfaces) count(3) = count(3) + 1
       end if
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
-      call check_netcdf(nf90_get_var(fh%id, varid, &
-         field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), &
-         start=fh%start3d, count=count), &
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=fh%start3d, count=count), &
          'reading WRF variable', fh%filename, name)
    end subroutine read_raw_3d
 
@@ -203,17 +188,14 @@ contains
 
       start = fh%start3d
       count = fh%count3d
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
       if (tile%ngbs(west)%is_domain_edge()) then
          count(1) = count(1) + 1
-         call check_netcdf(nf90_get_var(fh%id, varid, &
-            field(fh%ibs - 1:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
+         call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs - 1:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
             'reading WRF staggered U', fh%filename, name)
       else
          start(1) = start(1) + 1
-         call check_netcdf(nf90_get_var(fh%id, varid, &
-            field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
+         call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
             'reading WRF staggered U', fh%filename, name)
       end if
    end subroutine read_wrf_u
@@ -228,8 +210,7 @@ contains
 
       start = fh%start3d
       count = fh%count3d
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
       if (tile%ngbs(south)%is_domain_edge()) then
          count(2) = count(2) + 1
          beg = fh%ibs
@@ -243,13 +224,11 @@ contains
             finish = finish + proc%nhalo
             count(1) = count(1) + proc%nhalo
          end if
-         call check_netcdf(nf90_get_var(fh%id, varid, &
-            field(beg:finish, fh%jbs - 1:fh%jbe, :), start=start, count=count), &
+         call check_netcdf(nf90_get_var(fh%id, varid, field(beg:finish, fh%jbs - 1:fh%jbe, :), start=start, count=count), &
             'reading WRF staggered V', fh%filename, name)
       else
          start(2) = start(2) + 1
-         call check_netcdf(nf90_get_var(fh%id, varid, &
-            field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
+         call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=count), &
             'reading WRF staggered V', fh%filename, name)
       end if
    end subroutine read_wrf_v
@@ -262,11 +241,8 @@ contains
 
       start = fh%start3d
       start(3) = start(3) + 1
-      call check_netcdf(nf90_inq_varid(fh%id, name, varid), &
-                        'querying WRF variable', fh%filename, name)
-      call check_netcdf(nf90_get_var(fh%id, varid, &
-         field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), &
-         start=start, count=fh%count3d), &
+      call check_netcdf(nf90_inq_varid(fh%id, name, varid), 'querying WRF variable', fh%filename, name)
+      call check_netcdf(nf90_get_var(fh%id, varid, field(fh%ibs:fh%ibe, fh%jbs:fh%jbe, :), start=start, count=fh%count3d), &
          'reading WRF staggered W', fh%filename, name)
    end subroutine read_wrf_w
 
@@ -284,12 +260,9 @@ contains
       if (.not. does_file_exist(filename)) &
          call fatal_error('required static meteorology file does not exist: "'//trim(filename)//'"')
       fh = open_nc_file(proc, domain, tile, filename, is_read=.true.)
-      call check_netcdf(nf90_inq_varid(fh%id, 'HGT', varid), &
-                        'querying WRF terrain', filename, 'HGT')
-      call check_netcdf(nf90_get_var(fh%id, varid, &
-         iblock%terrain(fh%ibs:fh%ibe, fh%jbs:fh%jbe), &
-         start=fh%start2d, count=fh%count2d), &
-         'reading WRF terrain', filename, 'HGT')
+      call check_netcdf(nf90_inq_varid(fh%id, 'HGT', varid), 'querying WRF terrain', filename, 'HGT')
+      call check_netcdf(nf90_get_var(fh%id, varid, iblock%terrain(fh%ibs:fh%ibe, fh%jbs:fh%jbe), &
+         start=fh%start2d, count=fh%count2d), 'reading WRF terrain', filename, 'HGT')
       call close_nc_file(fh)
    end subroutine read_mete_static
 

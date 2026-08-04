@@ -14,15 +14,12 @@ contains
       type(error_type), allocatable, intent(out) :: error
       type(config_type) :: config
       config = load_config('region.nml')
-      call check(error, config%we(1) == 88 .and. config%sn(1) == 77 .and. &
-                        config%nlev == 29 .and. config%proj_id == 1, &
+      call check(error, config%we(1) == 88 .and. config%sn(1) == 77 .and. config%nlev == 29 .and. config%proj_id == 1, &
                  'formal regional grid changed unexpectedly')
-      if (.not. allocated(error)) &
-         call check(error, trim(config%bc_file) == './icbc/naqp_bc.nc' .and. &
+      if (.not. allocated(error)) call check(error, trim(config%bc_file) == './icbc/naqp_bc.nc' .and. &
                            trim(config%ic_file) == './icbc/naqp_ic_d0[DOMAIN].nc', &
                     'formal regional initial or boundary configuration changed')
-      if (.not. allocated(error)) &
-         call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/region/wrf/') == 1 .and. &
+      if (.not. allocated(error)) call check(error, index(config%mete_file, '/3clear/share/xiaolh/v3/region/wrf/') == 1 .and. &
                            index(config%emis_file, '/3clear/share/xiaolh/v3/region/emis/') == 1, &
                     'formal regional input paths changed unexpectedly')
    end subroutine test_config

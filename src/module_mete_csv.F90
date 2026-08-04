@@ -98,16 +98,14 @@ contains
 
       message = ''
       do i = 1, table%n_2d
-         if (table%var2ds(i)%category == METE_STANDARD .and. &
-             .not. mapping%contain(table%var2ds(i)%name)) then
+         if (table%var2ds(i)%category == METE_STANDARD .and. .not. mapping%contain(table%var2ds(i)%name)) then
             message = 'missing mapping for standard variable "'//trim(table%var2ds(i)%name)//'"'
             exit
          end if
       end do
       if (len(message) == 0) then
          do i = 1, table%n_3d
-            if (table%var3ds(i)%category == METE_STANDARD .and. &
-                .not. mapping%contain(table%var3ds(i)%name)) then
+            if (table%var3ds(i)%category == METE_STANDARD .and. .not. mapping%contain(table%var3ds(i)%name)) then
                message = 'missing mapping for standard variable "'//trim(table%var3ds(i)%name)//'"'
                exit
             end if
@@ -308,8 +306,7 @@ contains
       do i = 1, table%n_2d
          do j = 1, table%n_3d
             if (trim(table%var2ds(i)%name) == trim(table%var3ds(j)%name)) &
-               call fatal_error('duplicate meteorology variable "'//trim(table%var2ds(i)%name)//'" in "'// &
-                                trim(filename)//'"')
+               call fatal_error('duplicate meteorology variable "'//trim(table%var2ds(i)%name)//'" in "'// trim(filename)//'"')
          end do
       end do
    end subroutine validate_mete_table
@@ -323,8 +320,7 @@ contains
          if (mapping%vars(i)%ndim /= 2 .and. mapping%vars(i)%ndim /= 3) &
             call fatal_error('mapping dimension must be 2 or 3 for "'//trim(mapping%vars(i)%name)//'"')
          if (.not. supported_method(mapping%vars(i)%method)) &
-            call fatal_error('unsupported mapping method "'//trim(mapping%vars(i)%method)//'" in "'// &
-                             trim(filename)//'"')
+            call fatal_error('unsupported mapping method "'//trim(mapping%vars(i)%method)//'" in "'// trim(filename)//'"')
          do j = i + 1, mapping%nvar
             if (trim(mapping%vars(i)%name) == trim(mapping%vars(j)%name)) &
                call fatal_error('duplicate mapping target "'//trim(mapping%vars(i)%name)//'"')

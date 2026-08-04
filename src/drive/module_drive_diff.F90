@@ -30,10 +30,10 @@ contains
             if (.not. iblock%chem_meta%vars(n)%diffused) cycle
             do k = 1, size(v, 3) ! 不同垂直层
                do i = tile%ibs, tile%ibe
-                  call cal_cfl_time_step(ylen(i, :), iblock%ky(i, :, k), dt, sdt, nt) ! 根据局地扩散系数确定稳定时间步长。
+                  ! 根据局地扩散系数确定稳定时间步长。
+                  call cal_cfl_time_step(ylen(i, :), iblock%ky(i, :, k), dt, sdt, nt)
                   do it = 1, nt ! 确保满足CFL条件
-                     call hdiff1d_by_k_theory(sdt, ylen(i, :), iblock%ky(i, :, k), &
-                                              iblock%rho(i, :, k), c(i, :, k, n, t), &
+                     call hdiff1d_by_k_theory(sdt, ylen(i, :), iblock%ky(i, :, k), iblock%rho(i, :, k), c(i, :, k, n, t), &
                                               dc(i, :), vv(i, :, k))
                   end do
                end do
@@ -48,10 +48,10 @@ contains
             if (.not. iblock%chem_meta%vars(n)%diffused) cycle
             do k = 1, size(vv, 3)
                do j = tile%jbs, tile%jbe
-                  call cal_cfl_time_step(xlen(:, j), iblock%kx(:, j, k), dt, sdt, nt) ! 根据局地扩散系数确定稳定时间步长。
+                  ! 根据局地扩散系数确定稳定时间步长。
+                  call cal_cfl_time_step(xlen(:, j), iblock%kx(:, j, k), dt, sdt, nt)
                   do it = 1, nt ! 确保满足CFL条件
-                     call hdiff1d_by_k_theory(sdt, xlen(:, j), iblock%kx(:, j, k), &
-                                              iblock%rho(:, j, k), c(:, j, k, n, t), &
+                     call hdiff1d_by_k_theory(sdt, xlen(:, j), iblock%kx(:, j, k), iblock%rho(:, j, k), c(:, j, k, n, t), &
                                               dc(:, j), vv(:, j, k))
                   end do
                end do
@@ -75,10 +75,7 @@ contains
             if (.not. iblock%chem_meta%vars(n)%diffused) cycle
             do j = iblock%jbs, iblock%jbe
                do i = iblock%ibs, iblock%ibe
-                  call vdiff_by_k_theory(dt, iblock%kz(i, j, :), &
-                                        iblock%dz(i, j, :), &
-                                        iblock%rho(i, j, :), &
-                                        c(i, j, :, n, t))
+                  call vdiff_by_k_theory(dt, iblock%kz(i, j, :), iblock%dz(i, j, :), iblock%rho(i, j, :), c(i, j, :, n, t))
                end do
             end do
          end do

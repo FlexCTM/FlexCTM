@@ -117,8 +117,7 @@ contains
       do i = 1, table%nvar
          if (len_trim(table%vars(i)%name) == 0) call fatal_error('empty chemical variable name')
          do j = 1, i - 1
-            if (trim(table%vars(i)%name) == trim(table%vars(j)%name)) &
-               call fatal_error('duplicate chemical variable "'// &
+            if (trim(table%vars(i)%name) == trim(table%vars(j)%name)) call fatal_error('duplicate chemical variable "'// &
                                 trim(table%vars(i)%name)//'" in "'//trim(filename)//'"')
          end do
          select case (trim(table%vars(i)%phase))
@@ -128,10 +127,8 @@ contains
          case default
             call fatal_error('unknown phase for chemical variable "'//trim(table%vars(i)%name)//'"')
          end select
-         if ((table%vars(i)%advected .or. table%vars(i)%diffused) .and. &
-             .not. table%vars(i)%transported) &
-            call fatal_error('non-transported variable cannot be advected or diffused: "'// &
-                             trim(table%vars(i)%name)//'"')
+         if ((table%vars(i)%advected .or. table%vars(i)%diffused) .and. .not. table%vars(i)%transported) &
+            call fatal_error('non-transported variable cannot be advected or diffused: "'// trim(table%vars(i)%name)//'"')
          if (table%vars(i)%use_chemistry .and. table%vars(i)%role /= CHEM_REACTIVE) &
             call fatal_error('chemistry variable must have reactive role: "'//trim(table%vars(i)%name)//'"')
          if (table%vars(i)%transported) table%ntransported = table%ntransported + 1

@@ -33,23 +33,16 @@ contains
       type(block_type) :: block_data
       type(process_type) :: proc
       call setup(block_data, proc)
-      call check(error, all(shape(block_data%mete2d) == [6, 5, 8]), &
-                 'two-dimensional meteorology has the wrong shape')
-      if (.not. allocated(error)) &
-         call check(error, all(shape(block_data%mete3d) == [6, 5, 2, 14]), &
+      call check(error, all(shape(block_data%mete2d) == [6, 5, 8]), 'two-dimensional meteorology has the wrong shape')
+      if (.not. allocated(error)) call check(error, all(shape(block_data%mete3d) == [6, 5, 2, 14]), &
                     'three-dimensional meteorology has the wrong shape')
-      if (.not. allocated(error)) &
-         call check(error, all(block_data%mete2d == 0) .and. all(block_data%mete3d == 0), &
+      if (.not. allocated(error)) call check(error, all(block_data%mete2d == 0) .and. all(block_data%mete3d == 0), &
                     'meteorology arrays were not initialized')
-      if (.not. allocated(error)) &
-         call check(error, associated(block_data%rho) .and. associated(block_data%kz) .and. &
-                           allocated(block_data%rho_next), &
-                    'meteorology aliases or rho_next were not initialized')
+      if (.not. allocated(error)) call check(error, associated(block_data%rho) .and. associated(block_data%kz) .and. &
+                           allocated(block_data%rho_next), 'meteorology aliases or rho_next were not initialized')
       call block_data%clear()
-      if (.not. allocated(error)) &
-         call check(error, .not. allocated(block_data%mete2d) .and. &
-                           .not. allocated(block_data%mete3d) .and. &
-                           .not. allocated(block_data%rho_next), &
+      if (.not. allocated(error)) call check(error, .not. allocated(block_data%mete2d) .and. &
+                           .not. allocated(block_data%mete3d) .and. .not. allocated(block_data%rho_next), &
                     'block clear did not release meteorology arrays')
       call proc%clear()
    end subroutine test_allocation

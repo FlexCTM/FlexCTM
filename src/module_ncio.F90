@@ -15,8 +15,7 @@ module mod_ncio
    public :: check_netcdf, resolve_nc_open_options
    public :: model_netcdf_type
 
-   integer, parameter :: model_netcdf_type = &
-                         merge(NF90_FLOAT, NF90_DOUBLE, storage_size(0.0_fp) == 32)
+   integer, parameter :: model_netcdf_type = merge(NF90_FLOAT, NF90_DOUBLE, storage_size(0.0_fp) == 32)
 
    type nc_type
       integer :: id                         !! NetCDF 文件标识符。
@@ -53,38 +52,26 @@ contains
       call resolve_nc_open_options(is_old, is_read, open_existing, read_only)
 
       if (read_only) then
-         call check_netcdf(nf90_open(filename, NF90_NOWRITE, fh%id), &
-                           'opening read-only NetCDF', filename)
+         call check_netcdf(nf90_open(filename, NF90_NOWRITE, fh%id), 'opening read-only NetCDF', filename)
       else if (open_existing) then
-         call check_netcdf( &
-            nf90_open(filename, IOR(NF90_NETCDF4, IOR(NF90_WRITE, NF90_MPIIO)), &
-                      fh%id, comm=proc%model%comm, info=MPI_INFO_NULL), &
-            'opening writable NetCDF', filename)
+         call check_netcdf( nf90_open(filename, IOR(NF90_NETCDF4, IOR(NF90_WRITE, NF90_MPIIO)), &
+                      fh%id, comm=proc%model%comm, info=MPI_INFO_NULL), 'opening writable NetCDF', filename)
       else
-         call check_netcdf( &
-            nf90_create(filename, IOR(NF90_NETCDF4, NF90_MPIIO), fh%id, &
-                        comm=proc%model%comm, info=MPI_INFO_NULL), &
+         call check_netcdf( nf90_create(filename, IOR(NF90_NETCDF4, NF90_MPIIO), fh%id, comm=proc%model%comm, info=MPI_INFO_NULL), &
             'creating NetCDF', filename)
       end if
 
       if (.not. open_existing) then
-         call check_netcdf(nf90_def_dim(fh%id, 'x', domain%nx, fh%dims(1)), &
-                           'defining dimension x', filename)
-         call check_netcdf(nf90_def_dim(fh%id, 'y', domain%ny, fh%dims(2)), &
-                           'defining dimension y', filename)
-         call check_netcdf(nf90_def_dim(fh%id, 'z', nz, fh%dims(3)), &
-                           'defining dimension z', filename)
-         call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'description', 'naqp'), &
-                           'writing global description', filename)
-         call check_netcdf(nf90_enddef(fh%id), &
-                           'ending NetCDF define mode', filename)
-      else
-         call check_netcdf(nf90_inq_dimid(fh%id, 'x', fh%dims(1)), &
-                           'querying dimension x', filename)
-         call check_netcdf(nf90_inq_dimid(fh%id, 'y', fh%dims(2)), &
-                           'querying dimension y', filename)
-         call check_netcdf(nf90_inq_dimid(fh%id, 'z', fh%dims(3)), &
-                           'querying dimension z', filename)
+         call check_netcdf(nf90_def_dim(fh%id, 'x', domain%nx, fh%dims(1)), 'defining dimension x', filename)
+         call check_netcdf(nf90_def_dim(fh%id, 'y', domain%ny, fh%dims(2)), 'defining dimension y', filename)
+         call check_netcdf(nf90_def_dim(fh%id, 'z', nz, fh%dims(3)), 'defining dimension z', filename)
+         call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'description', 'naqp'), 'writing global description', filename)
+         call check_netcdf(nf90_enddef(fh%id), 'ending NetCDF define mode', filename)
+      else if (.not. read_only) then
+         ! Read-only external datasets may use native dimension names such as WRF's west_east.
+         call check_netcdf(nf90_inq_dimid(fh%id, 'x', fh%dims(1)), 'querying dimension x', filename)
+         call check_netcdf(nf90_inq_dimid(fh%id, 'y', fh%dims(2)), 'querying dimension y', filename)
+         call check_netcdf(nf90_inq_dimid(fh%id, 'z', fh%dims(3)), 'querying dimension z', filename)
       end if
 
       ! 只处理当前切片中的有效区域，不包含 halo。
