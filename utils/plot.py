@@ -11,6 +11,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 import xarray as xr
 
@@ -23,6 +25,7 @@ COORDINATE_PAIRS = (
     ("longitude", "latitude"),
     ("XLONG", "XLAT"),
 )
+FLEXCTM_COLOURS = ("#ffffff", "#2166ac", "#1a9850", "#fee08b", "#d73027")
 
 
 def parse_levels(text: str) -> list[float]:
@@ -74,10 +77,20 @@ def parse_arguments() -> argparse.Namespace:
         help="Add Cartopy coastlines; the first use may download Natural Earth data.",
     )
     parser.add_argument("--title", help="Custom figure title.")
-    parser.add_argument("--cmap", default="viridis", help="Matplotlib colour map.")
+    parser.add_argument(
+        "--cmap",
+        default="flexctm",
+        help="Colour map; default: FlexCTM white-blue-green-yellow-red.",
+    )
     parser.add_argument("--levels", type=parse_levels, help="Comma-separated contour levels.")
     parser.add_argument("--vmin", type=float, help="Minimum colour value.")
     parser.add_argument("--vmax", type=float, help="Maximum colour value.")
+    parser.add_argument(
+        "--upper-quantile",
+        type=float,
+        default=99.0,
+        help="Percentile used as the automatic colour maximum; default: 99.",
+    )
     parser.add_argument("--dpi", type=int, default=200, help="Output resolution.")
     return parser.parse_args()
 
@@ -191,11 +204,19 @@ def load_cartopy(enabled: bool):
     return ccrs, cfeature
 
 
-def find_data_range(
-    data: xr.DataArray, time_indices: list[int], level_index: int
-) -> tuple[float, float]:
+def find_data_statistics(
+    data: xr.DataArray,
+    time_indices: list[int],
+    level_index: int,
+    upper_quantile: float,
+) -> tuple[float, float, float]:
+    if not 0.0 < upper_quantile <= 100.0:
+        raise ValueError("--upper-quantile must be greater than 0 and no greater than 100")
+
     minimum = np.inf
     maximum = -np.inf
+    samples = []
+    sample_limit = max(1, 1_000_000//len(time_indices))
     for time_index in time_indices:
         field, _, _ = select_field(data, time_index, level_index)
         values = np.asarray(field.values)
@@ -203,29 +224,46 @@ def find_data_range(
         if finite.size:
             minimum = min(minimum, float(finite.min()))
             maximum = max(maximum, float(finite.max()))
+            if finite.size > sample_limit:
+                positions = np.linspace(0, finite.size - 1, sample_limit, dtype=int)
+                finite = finite[positions]
+            samples.append(finite)
     if not np.isfinite(minimum) or not np.isfinite(maximum):
         raise ValueError("selected field does not contain finite values")
-    return minimum, maximum
+    quantile_maximum = float(np.percentile(np.concatenate(samples), upper_quantile))
+    if quantile_maximum <= minimum < maximum:
+        quantile_maximum = maximum
+    return minimum, maximum, quantile_maximum
 
 
 def make_colour_scale(
-    args: argparse.Namespace, data_minimum: float, data_maximum: float
-) -> tuple[np.ndarray, str]:
+    args: argparse.Namespace,
+    data_minimum: float,
+    data_maximum: float,
+    quantile_maximum: float,
+) -> tuple[np.ndarray, np.ndarray, str]:
     if args.levels and (args.vmin is not None or args.vmax is not None):
         raise ValueError("use either --levels or --vmin/--vmax, not both")
 
     if args.levels:
         levels = np.asarray(args.levels)
     else:
-        lower = data_minimum if args.vmin is None else args.vmin
-        upper = data_maximum if args.vmax is None else args.vmax
+        if args.vmin is None:
+            lower = 0.0 if data_minimum >= 0.0 else np.floor(data_minimum)
+        else:
+            lower = args.vmin
+        upper = np.ceil(quantile_maximum) if args.vmax is None else args.vmax
         if lower > upper or (lower == upper and (args.vmin is not None or args.vmax is not None)):
             raise ValueError("colour minimum must be smaller than colour maximum")
         if lower == upper:
-            margin = max(abs(lower)*0.01, 1.0e-12)
-            lower -= margin
-            upper += margin
+            upper = lower + 1.0
         levels = np.linspace(lower, upper, 21)
+
+    locator = MaxNLocator(nbins=10, integer=True)
+    ticks = locator.tick_values(levels[0], levels[-1])
+    ticks = ticks[(ticks >= levels[0]) & (ticks <= levels[-1])]
+    if ticks.size < 2:
+        ticks = np.asarray((levels[0], levels[-1]))
 
     below = data_minimum < levels[0]
     above = data_maximum > levels[-1]
@@ -237,7 +275,18 @@ def make_colour_scale(
         extend = "max"
     else:
         extend = "neither"
-    return levels, extend
+    return levels, ticks, extend
+
+
+def get_colour_map(name: str, colour_count: int):
+    if name == "flexctm":
+        continuous = LinearSegmentedColormap.from_list("flexctm", FLEXCTM_COLOURS, N=256)
+        colours = continuous(np.linspace(0.0, 1.0, colour_count))
+        return ListedColormap(colours, name="flexctm")
+    try:
+        return plt.get_cmap(name)
+    except ValueError as error:
+        raise ValueError(f'unknown colour map "{name}"') from error
 
 
 def prepare_geographic_field(
@@ -285,7 +334,9 @@ def render_plot(
     level_label: str | None,
     time_index: int,
     colour_levels: np.ndarray,
+    colour_ticks: np.ndarray,
     colour_extend: str,
+    colour_map,
     ccrs,
     cfeature,
 ) -> Path:
@@ -301,7 +352,7 @@ def render_plot(
     subplot_kw = {"projection": ccrs.PlateCarree()} if use_cartopy else {}
     figure, axis = plt.subplots(figsize=(10, 5), subplot_kw=subplot_kw)
     contour_options = {
-        "cmap": args.cmap,
+        "cmap": colour_map,
         "extend": colour_extend,
         "levels": colour_levels,
     }
@@ -324,7 +375,7 @@ def render_plot(
     if time_label:
         labels.append(time_label)
     axis.set_title(args.title or " | ".join(labels))
-    colour_bar = figure.colorbar(image, ax=axis, pad=0.03)
+    colour_bar = figure.colorbar(image, ax=axis, pad=0.03, ticks=colour_ticks)
     colour_bar.set_label(f"{description} [{unit}]" if unit else description)
     figure.tight_layout()
 
@@ -345,8 +396,13 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
 
         data = dataset[args.variable]
         time_indices = select_time_indices(data, args)
-        data_minimum, data_maximum = find_data_range(data, time_indices, args.level)
-        colour_levels, colour_extend = make_colour_scale(args, data_minimum, data_maximum)
+        data_minimum, data_maximum, quantile_maximum = find_data_statistics(
+            data, time_indices, args.level, args.upper_quantile
+        )
+        colour_levels, colour_ticks, colour_extend = make_colour_scale(
+            args, data_minimum, data_maximum, quantile_maximum
+        )
+        colour_map = get_colour_map(args.cmap, len(colour_levels) - 1)
         coordinates = None
         for time_index in time_indices:
             field, time_label, level_label = select_field(data, time_index, args.level)
@@ -367,7 +423,9 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
                     level_label,
                     time_index,
                     colour_levels,
+                    colour_ticks,
                     colour_extend,
+                    colour_map,
                     ccrs,
                     cfeature,
                 )

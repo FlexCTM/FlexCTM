@@ -233,9 +233,11 @@ python utils/plot.py ctm_d01.nc NO2 \
   --all-times --start-time-index 1 --level 0
 ```
 
-批量模式只启动一次 Python，并且只打开一次输入文件，明显快于在 shell 循环中反复调用脚本。`--start-time-index` 和 `--end-time-index` 指定包含端点的索引范围；省略 `--end-time-index` 时绘制到最后一个时次。所有时次默认使用所选数据的统一色标。可以使用 `--output-dir figures` 指定输出目录。未指定时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。
+批量模式只启动一次 Python，并且只打开一次输入文件，明显快于在 shell 循环中反复调用脚本。`--start-time-index` 和 `--end-time-index` 指定包含端点的索引范围；省略 `--end-time-index` 时绘制到最后一个时次。所有时次默认使用统一色标：下限为 0（数据含负值时向下取整），上限为全部选定数据的第 99 百分位并向上取整，少量更大值显示为最高颜色。色标包含 20 个颜色区间，刻度使用整数。可以使用 `--output-dir figures` 指定输出目录。未指定时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。
 
-默认绘图不加载 Cartopy，也不联网下载地图数据。需要海岸线时安装 Cartopy 并增加 `--coastlines`；首次使用可能下载 Natural Earth 数据，因此速度较慢。全球网格的经度会自动排序并闭合周期边界。二维变量会忽略垂直层选择。可以使用 `--levels 0,10,20,40,80` 指定所有时次共用的色阶，或使用 `--vmin`、`--vmax` 指定共同的颜色范围。完整参数通过以下命令查看：
+默认颜色从低到高依次为白、蓝、绿、黄、红。可以使用 `--upper-quantile 99.5` 调整自动上限，使用 `--levels 0,10,20,40,80` 指定所有时次共用的色阶，或使用 `--vmin`、`--vmax` 指定共同的颜色范围。指定 `--levels` 或 `--vmax` 时不使用分位数上限。
+
+默认绘图不加载 Cartopy，也不联网下载地图数据。需要海岸线时安装 Cartopy 并增加 `--coastlines`；首次使用可能下载 Natural Earth 数据，因此速度较慢。全球网格的经度会自动排序并闭合周期边界。二维变量会忽略垂直层选择。完整参数通过以下命令查看：
 
 ```bash
 python utils/merge.py --help
