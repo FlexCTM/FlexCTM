@@ -13,7 +13,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import BoundaryNorm, LinearSegmentedColormap, ListedColormap
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import xarray as xr
@@ -461,6 +461,20 @@ def find_wind_reference(
     return nice_wind_speed(float(np.percentile(np.concatenate(samples), 90.0)))
 
 
+def projected_grid(
+    map_projection, data_crs, longitude: np.ndarray, latitude: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    points = map_projection.transform_points(data_crs, longitude, latitude)
+    return points[:, :, 0], points[:, :, 1]
+
+
+def padded_limits(coordinates: np.ndarray, difference_axis: int) -> tuple[float, float]:
+    differences = np.abs(np.diff(coordinates, axis=difference_axis))
+    finite = differences[np.isfinite(differences) & (differences > 0.0)]
+    padding = 0.5*float(np.median(finite)) if finite.size else 0.0
+    return float(np.nanmin(coordinates) - padding), float(np.nanmax(coordinates) + padding)
+
+
 def output_path(args: argparse.Namespace, input_path: Path, time_index: int) -> Path:
     if args.output:
         return Path(args.output)
@@ -508,15 +522,26 @@ def render_plot(
     use_cartopy = map_projection is not None
     subplot_kw = {"projection": map_projection} if use_cartopy else {}
     figure, axis = plt.subplots(figsize=(10, 5), subplot_kw=subplot_kw)
-    contour_options = {
+    field_x = longitude
+    field_y = latitude
+    field_transform = data_crs
+    projected_x = None
+    projected_y = None
+    if use_cartopy and projection_identifier(grid.attributes) == 1:
+        projected_x, projected_y = projected_grid(map_projection, data_crs, longitude, latitude)
+        field_x = projected_x
+        field_y = projected_y
+        field_transform = map_projection
+
+    mesh_options = {
         "cmap": colour_map,
-        "extend": colour_extend,
-        "levels": colour_levels,
+        "norm": BoundaryNorm(colour_levels, colour_map.N, clip=True),
+        "shading": "auto",
     }
     if use_cartopy:
-        contour_options["transform"] = data_crs
+        mesh_options["transform"] = field_transform
 
-    image = axis.contourf(longitude, latitude, values, **contour_options)
+    image = axis.pcolormesh(field_x, field_y, values, **mesh_options)
     if args.coastlines and grid.geographic:
         draw_coastlines(axis, coastlines, data_crs if use_cartopy else None)
 
@@ -547,6 +572,9 @@ def render_plot(
     if use_cartopy:
         if global_grid:
             axis.set_global()
+        elif projected_x is not None and projected_y is not None:
+            axis.set_xlim(*padded_limits(projected_x, difference_axis=1))
+            axis.set_ylim(*padded_limits(projected_y, difference_axis=0))
         else:
             extent = [
                 float(np.nanmin(grid.longitude)),
@@ -555,9 +583,17 @@ def render_plot(
                 float(np.nanmax(grid.latitude)),
             ]
             axis.set_extent(extent, crs=data_crs)
-        gridlines = axis.gridlines(draw_labels=True, linewidth=0.3, linestyle="--", alpha=0.5)
+        gridlines = axis.gridlines(
+            draw_labels=True,
+            x_inline=False,
+            y_inline=False,
+            linewidth=0.3,
+            linestyle="--",
+            alpha=0.5,
+        )
         gridlines.top_labels = False
         gridlines.right_labels = False
+        gridlines.rotate_labels = False
     else:
         if grid.geographic:
             axis.set_xlim(float(np.nanmin(longitude)), float(np.nanmax(longitude)))
@@ -571,7 +607,7 @@ def render_plot(
     if time_label:
         labels.append(time_label)
     axis.set_title(args.title or " | ".join(labels))
-    colour_bar = figure.colorbar(image, ax=axis, pad=0.03, ticks=colour_ticks)
+    colour_bar = figure.colorbar(image, ax=axis, pad=0.03, ticks=colour_ticks, extend=colour_extend)
     colour_bar.set_label(f"{description} [{unit}]" if unit else description)
     figure.tight_layout()
 
