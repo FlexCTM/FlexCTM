@@ -112,7 +112,8 @@ program main
 
       ! 写出静态网格数据。
       filename = get_filename(cfg%static_grid_file, domain=cfg%dom_str(m))
-      call write_static_output(proc, proc%domains(m), proc%tiles(m), blocks(m), filename)
+      call write_static_output(proc, proc%domains(m), proc%tiles(m), blocks(m), filename, cfg%proj_id, cfg%ref_lon, cfg%ref_lat, &
+                               cfg%truelat1, cfg%truelat2)
    end do
 
    ! 时间迭代

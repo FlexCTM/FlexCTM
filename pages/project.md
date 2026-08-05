@@ -16,7 +16,7 @@ FlexCTM/
 ├── test/            单元、组件和集成测试
 ├── meta/            变量元数据和数据集映射
 ├── pages/           FORD 开发文档
-├── media/           文档图片
+├── media/           文档图片和后处理地图数据
 ├── utils/           依赖准备和后处理工具
 ├── CMakeLists.txt    CMake 构建入口
 ├── Makefile          Make 构建入口

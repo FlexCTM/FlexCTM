@@ -17,6 +17,7 @@ from netCDF4 import Dataset, date2num
 
 TIME_PATTERN = re.compile(r"(?<!\d)(\d{14}|\d{12}|\d{10})(?!\d)")
 TIME_FORMATS = {10: "%Y%m%d%H", 12: "%Y%m%d%H%M", 14: "%Y%m%d%H%M%S"}
+WIND_VARIABLES = ("U", "V")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -34,7 +35,7 @@ def parse_arguments() -> argparse.Namespace:
         "--variable",
         action="append",
         dest="variables",
-        help="Variable to retain; repeat this option to retain several variables.",
+        help="Variable to retain; U and V are also retained when available.",
     )
     parser.add_argument(
         "--overwrite",
@@ -86,7 +87,10 @@ def selected_variables(source: Dataset, requested: list[str] | None) -> list[str
         missing = [name for name in requested if name not in source.variables]
         if missing:
             raise ValueError(f"missing variables: {', '.join(missing)}")
-        names = list(dict.fromkeys(requested))
+        available_winds = [name for name in WIND_VARIABLES if name in source.variables]
+        if available_winds and len(available_winds) != len(WIND_VARIABLES):
+            raise ValueError("input contains only one of the required wind variables U and V")
+        names = list(dict.fromkeys(requested + available_winds))
     else:
         names = list(source.variables)
 

@@ -186,16 +186,16 @@ MOCK 案例用于构建验证、单元测试和数值回归，不代表业务输
 
 ## 后处理
 
-`utils/merge.py` 和 `utils/plot.py` 使用 Python 3。合并需要 netCDF4；绘图需要 NumPy、xarray 和 Matplotlib。Cartopy 仅在绘制海岸线时需要。
+`utils/merge.py` 和 `utils/plot.py` 使用 Python 3。合并需要 netCDF4；绘图需要 NumPy、xarray 和 Matplotlib。Lambert 投影绘图还需要 Cartopy。
 
 ```bash
 python -m pip install numpy xarray netCDF4 matplotlib
-# 可选：python -m pip install cartopy
+# Lambert 区域绘图：python -m pip install cartopy
 ```
 
 ### 合并时间快照
 
-`merge.py` 将同一 domain、相同网格上的瞬时输出沿 `time` 维串联，便于使用 ncview 浏览。脚本逐时次写入结果，不会把全部模式输出同时装入内存。它不合并不同 domain，也不处理 MPI 分片；FlexCTM 的每个瞬时输出本身已经是完整的并行 NetCDF 文件。
+`merge.py` 将同一 domain、相同网格上的瞬时输出沿 `time` 维串联，便于使用 ncview 浏览。脚本逐时次写入结果，不会把全部模式输出同时装入内存。
 
 ```bash
 python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc --overwrite
@@ -203,41 +203,39 @@ python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc --overwrite
 ncview ctm_d01.nc
 ```
 
-输入通配符建议放在引号内，由脚本统一展开和排序。文件名中的 `YYYYMMDDHH`、`YYYYMMDDHHMM` 或 `YYYYMMDDHHMMSS` 会转换为 NetCDF 时间坐标。如果所有文件名都不含时间戳，`time` 使用从 0 开始的快照编号；不允许混合有时间戳和无时间戳的文件。默认保留所有变量；只合并部分变量时可重复使用 `--variable`：
+输入通配符建议放在引号内，由脚本统一展开和排序。文件名中的 `YYYYMMDDHH`、`YYYYMMDDHHMM` 或 `YYYYMMDDHHMMSS` 会转换为 NetCDF 时间坐标。如果所有文件名都不含时间戳，`time` 使用从 0 开始的快照编号；不允许混合有时间戳和无时间戳的文件。默认保留所有变量；只合并部分变量时可重复使用 `--variable`。使用 `--variable` 时，脚本还会自动保留标准风场 `U` 和 `V`，供绘图叠加风矢量：
 
 ```bash
-python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc \
-  --variable O3 --variable NO2
+python utils/merge.py 'ctm_d01_*.nc' -o ctm_d01.nc --variable O3 --variable NO2
 ```
 
 输出文件已经存在时，必须显式增加 `--overwrite`。
 
 ### 绘制水平分布
 
-`plot.py` 可以读取单个瞬时文件或 `merge.py` 生成的时间序列。模式输出不重复保存经纬度，因此绘图时通过 `--grid` 指定对应 domain 的静态网格文件；省略该参数时只能按 `x`、`y` 网格下标绘图：
+`plot.py` 可以读取单个瞬时文件或 `merge.py` 生成的时间序列。绘图时通过 `--grid` 指定对应 domain 的静态网格文件；省略该参数时只能按 `x`、`y` 网格下标绘图：
 
 ```bash
-python utils/plot.py ctm_d01.nc NO2 \
-  --grid static_meta_d01.nc \
-  --time-index 1 --level 0 \
-  --output NO2_2024010213.png
+python utils/plot.py ctm_d01.nc NO2 --grid static_meta_d01.nc --time-index 1 --level 0 --output NO2_2024010213.png
 ```
 
-`--time-index` 和 `--level` 都从 0 开始。对于按时间排序的 `ctm_d01_2024010212.nc`、`ctm_d01_2024010213.nc` 等文件，`time-index=0` 对应第一个文件，`time-index=1` 对应第二个文件。
+`--time-index` 和 `--level` 都从 0 开始。
 
-需要从第二个文件开始绘制到最后一个文件时，使用批量模式：
+绘制多个时次时，批量模式：
 
 ```bash
-python utils/plot.py ctm_d01.nc NO2 \
-  --grid static_meta_d01.nc \
-  --all-times --start-time-index 1 --level 0
+python utils/plot.py ctm_d01.nc NO2 --grid static_meta_d01.nc --all-times --start-time-index 1 --level 0
 ```
 
-批量模式只启动一次 Python，并且只打开一次输入文件，明显快于在 shell 循环中反复调用脚本。`--start-time-index` 和 `--end-time-index` 指定包含端点的索引范围；省略 `--end-time-index` 时绘制到最后一个时次。所有时次默认使用统一色标：下限为 0（数据含负值时向下取整），上限为全部选定数据的第 99 百分位并向上取整，少量更大值显示为最高颜色。色标包含 20 个颜色区间，刻度使用整数。可以使用 `--output-dir figures` 指定输出目录。未指定时，以上命令生成 `ctm_d01_NO2_t001_z000.png` 至 `ctm_d01_NO2_t012_z000.png`。
+`--start-time-index` 和 `--end-time-index` 指定包含端点的索引范围；省略 `--end-time-index` 时绘制到最后一个时次。所有时次默认使用统一色标：下限为 0（数据含负值时向下取整），上限为全部选定数据的第 99 百分位并向上取整。
 
 默认颜色从低到高依次为白、蓝、绿、黄、红。可以使用 `--upper-quantile 99.5` 调整自动上限，使用 `--levels 0,10,20,40,80` 指定所有时次共用的色阶，或使用 `--vmin`、`--vmax` 指定共同的颜色范围。指定 `--levels` 或 `--vmax` 时不使用分位数上限。
 
-默认绘图不加载 Cartopy，也不联网下载地图数据。需要海岸线时安装 Cartopy 并增加 `--coastlines`；首次使用可能下载 Natural Earth 数据，因此速度较慢。全球网格的经度会自动排序并闭合周期边界。二维变量会忽略垂直层选择。完整参数通过以下命令查看：
+默认使用与浓度相同的时间和垂直层叠加 `U/V` 风矢量。风矢量间隔根据网格规模自动选择；可以使用 `--wind-stride 8` 手动指定，或使用 `--no-wind` 关闭。批量绘图中的风矢量采用统一尺度。
+
+静态网格保存 `proj_id`、`ref_lon`、`ref_lat`、`truelat1` 和 `truelat2`。`plot.py` 据此为全球经纬度网格选择 Plate Carrée，为区域网格选择 Lambert 等角圆锥投影。旧版静态网格不含这些属性；区域案例应使用当前程序重新生成 `static_meta_d01.nc`。
+
+海岸线默认开启，使用仓库内置的 Natural Earth 110m 粗分辨率数据，不会在运行时联网下载；可以使用 `--no-coastlines` 关闭。全球网格的经度会自动排序并闭合周期边界。二维变量会忽略垂直层选择。完整参数通过以下命令查看：
 
 ```bash
 python utils/merge.py --help

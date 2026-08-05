@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
+import json
 from pathlib import Path
 import sys
 
@@ -26,6 +28,16 @@ COORDINATE_PAIRS = (
     ("XLONG", "XLAT"),
 )
 FLEXCTM_COLOURS = ("#ffffff", "#2166ac", "#1a9850", "#fee08b", "#d73027")
+COASTLINE_FILE = Path(__file__).resolve().parents[1] / "media" / "ne_110m_coastline.geojson"
+WIND_VARIABLES = ("U", "V")
+
+
+@dataclass
+class GridInfo:
+    longitude: np.ndarray
+    latitude: np.ndarray
+    geographic: bool
+    attributes: dict
 
 
 def parse_levels(text: str) -> list[float]:
@@ -71,10 +83,38 @@ def parse_arguments() -> argparse.Namespace:
         "--output-dir",
         help="Directory for generated PNG files; useful with --all-times.",
     )
-    parser.add_argument(
+    coastline_group = parser.add_mutually_exclusive_group()
+    coastline_group.add_argument(
         "--coastlines",
+        dest="coastlines",
         action="store_true",
-        help="Add Cartopy coastlines; the first use may download Natural Earth data.",
+        default=True,
+        help="Draw the bundled coarse coastlines; enabled by default.",
+    )
+    coastline_group.add_argument(
+        "--no-coastlines",
+        dest="coastlines",
+        action="store_false",
+        help="Do not draw coastlines.",
+    )
+    wind_group = parser.add_mutually_exclusive_group()
+    wind_group.add_argument(
+        "--wind",
+        dest="wind",
+        action="store_true",
+        default=True,
+        help="Overlay U/V wind vectors when available; enabled by default.",
+    )
+    wind_group.add_argument(
+        "--no-wind",
+        dest="wind",
+        action="store_false",
+        help="Do not overlay wind vectors.",
+    )
+    parser.add_argument(
+        "--wind-stride",
+        type=int,
+        help="Plot every Nth wind vector; selected automatically by default.",
     )
     parser.add_argument("--title", help="Custom figure title.")
     parser.add_argument(
@@ -147,23 +187,25 @@ def coordinates_from_dataset(dataset: xr.Dataset) -> tuple[np.ndarray, np.ndarra
 
 def load_coordinates(
     dataset: xr.Dataset, grid_path: str | None, shape: tuple[int, int]
-) -> tuple[np.ndarray, np.ndarray, bool]:
+) -> GridInfo:
     if grid_path:
         with xr.open_dataset(grid_path, engine="netcdf4") as grid:
             coordinates = coordinates_from_dataset(grid)
+            attributes = dict(grid.attrs)
         if coordinates is None:
             raise ValueError(f"{grid_path} does not contain a supported longitude/latitude pair")
     else:
         coordinates = coordinates_from_dataset(dataset)
+        attributes = dict(dataset.attrs)
 
     if coordinates is None:
         y, x = np.indices(shape)
-        return x, y, False
+        return GridInfo(x, y, False, attributes)
     if coordinates[0].shape != shape or coordinates[1].shape != shape:
         raise ValueError(
             f"coordinate shape {coordinates[0].shape} does not match field shape {shape}"
         )
-    return coordinates[0], coordinates[1], True
+    return GridInfo(coordinates[0], coordinates[1], True, attributes)
 
 
 def default_output_name(input_path: Path, variable: str, time_index: int, level: int) -> Path:
@@ -193,15 +235,12 @@ def select_time_indices(data: xr.DataArray, args: argparse.Namespace) -> list[in
     return list(range(args.start_time_index, end_index + 1))
 
 
-def load_cartopy(enabled: bool):
-    if not enabled:
-        return None, None
+def load_cartopy():
     try:
         import cartopy.crs as ccrs
-        import cartopy.feature as cfeature
-    except ImportError as error:
-        raise ValueError("--coastlines requires Cartopy") from error
-    return ccrs, cfeature
+    except ImportError:
+        return None
+    return ccrs
 
 
 def find_data_statistics(
@@ -289,28 +328,137 @@ def get_colour_map(name: str, colour_count: int):
         raise ValueError(f'unknown colour map "{name}"') from error
 
 
-def prepare_geographic_field(
-    longitude: np.ndarray, latitude: np.ndarray, values: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def projection_identifier(attributes: dict) -> int:
+    if "proj_id" in attributes:
+        return int(attributes["proj_id"])
+    return 1 if attributes.get("grid_mapping_name") == "lambert_conformal_conic" else 0
+
+
+def is_regular_latlon_grid(grid: GridInfo) -> bool:
+    middle_y = grid.longitude.shape[0]//2
+    middle_x = grid.longitude.shape[1]//2
+    return bool(
+        np.allclose(grid.longitude, grid.longitude[middle_y:middle_y + 1, :])
+        and np.allclose(grid.latitude, grid.latitude[:, middle_x:middle_x + 1])
+    )
+
+
+def create_map_projection(grid: GridInfo, ccrs):
+    has_projection_metadata = "proj_id" in grid.attributes or "grid_mapping_name" in grid.attributes
+    if grid.geographic and not has_projection_metadata and not is_regular_latlon_grid(grid):
+        raise ValueError("curvilinear static grid lacks projection metadata; regenerate it with the current FlexCTM")
+    if not grid.geographic or ccrs is None:
+        if projection_identifier(grid.attributes) == 1:
+            raise ValueError("Lambert plotting requires Cartopy; install it with pip install cartopy")
+        return None
+    if projection_identifier(grid.attributes) == 1:
+        required = ("ref_lon", "ref_lat", "truelat1", "truelat2")
+        missing = [name for name in required if name not in grid.attributes]
+        if missing:
+            raise ValueError(f"static grid is missing projection attributes: {', '.join(missing)}")
+        return ccrs.LambertConformal(
+            central_longitude=float(grid.attributes["ref_lon"]),
+            central_latitude=float(grid.attributes["ref_lat"]),
+            standard_parallels=(
+                float(grid.attributes["truelat1"]),
+                float(grid.attributes["truelat2"]),
+            ),
+        )
+    return ccrs.PlateCarree()
+
+
+def load_coastlines() -> list[np.ndarray]:
+    if not COASTLINE_FILE.is_file():
+        raise ValueError(f"bundled coastline file is missing: {COASTLINE_FILE}")
+    with COASTLINE_FILE.open(encoding="utf-8") as stream:
+        collection = json.load(stream)
+
+    coastlines = []
+    for feature in collection["features"]:
+        geometry = feature["geometry"]
+        if geometry["type"] == "MultiLineString":
+            lines = geometry["coordinates"]
+        else:
+            lines = [geometry["coordinates"]]
+        coastlines.extend(np.asarray(line) for line in lines)
+    return coastlines
+
+
+def draw_coastlines(axis, coastlines: list[np.ndarray], data_crs) -> None:
+    options = {"color": "#303030", "linewidth": 0.55, "zorder": 4}
+    if data_crs is not None:
+        options["transform"] = data_crs
+    for line in coastlines:
+        axis.plot(line[:, 0], line[:, 1], **options)
+
+
+def is_global_grid(longitude: np.ndarray) -> bool:
     middle_row = longitude[longitude.shape[0]//2, :]
     differences = np.diff(middle_row)
     regular_differences = np.abs(differences[np.abs(differences) < 180.0])
     if not regular_differences.size:
-        return longitude, latitude, values
-
+        return False
     spacing = float(np.median(regular_differences))
-    is_global = np.isclose(spacing*longitude.shape[1], 360.0, atol=max(spacing*0.1, 1.0e-6))
-    if is_global:
+    return bool(np.isclose(spacing*longitude.shape[1], 360.0, atol=max(spacing*0.1, 1.0e-6)))
+
+
+def prepare_geographic_fields(
+    longitude: np.ndarray, latitude: np.ndarray, fields: list[np.ndarray]
+) -> tuple[np.ndarray, np.ndarray, list[np.ndarray]]:
+    middle_row = longitude[longitude.shape[0]//2, :]
+    differences = np.diff(middle_row)
+    regular_differences = np.abs(differences[np.abs(differences) < 180.0])
+    if not regular_differences.size:
+        return longitude, latitude, fields
+
+    if is_global_grid(longitude):
         order = np.argsort(middle_row)
         longitude = longitude[:, order]
         latitude = latitude[:, order]
-        values = values[:, order]
+        fields = [field[:, order] for field in fields]
         longitude = np.concatenate((longitude, longitude[:, :1] + 360.0), axis=1)
         latitude = np.concatenate((latitude, latitude[:, :1]), axis=1)
-        values = np.ma.concatenate((values, values[:, :1]), axis=1)
+        fields = [np.ma.concatenate((field, field[:, :1]), axis=1) for field in fields]
     elif np.any(np.abs(differences) >= 180.0):
         longitude = np.rad2deg(np.unwrap(np.deg2rad(longitude), axis=1))
-    return longitude, latitude, values
+    return longitude, latitude, fields
+
+
+def nice_wind_speed(speed: float) -> float:
+    if speed <= 0.0:
+        return 0.0
+    magnitude = 10.0**np.floor(np.log10(speed))
+    fraction = speed/magnitude
+    for candidate in (1.0, 2.0, 5.0, 10.0):
+        if fraction <= candidate:
+            return candidate*magnitude
+    return 10.0*magnitude
+
+
+def find_wind_reference(
+    dataset: xr.Dataset, time_indices: list[int], level_index: int
+) -> float | None:
+    present = [name in dataset for name in WIND_VARIABLES]
+    if not any(present):
+        return None
+    if not all(present):
+        raise ValueError("input must contain both U and V to draw wind vectors")
+
+    samples = []
+    sample_limit = max(1, 500_000//len(time_indices))
+    for time_index in time_indices:
+        u_field, _, _ = select_field(dataset["U"], time_index, level_index)
+        v_field, _, _ = select_field(dataset["V"], time_index, level_index)
+        speed = np.hypot(np.asarray(u_field.values), np.asarray(v_field.values)).ravel()
+        speed = speed[np.isfinite(speed)]
+        if speed.size > sample_limit:
+            positions = np.linspace(0, speed.size - 1, sample_limit, dtype=int)
+            speed = speed[positions]
+        if speed.size:
+            samples.append(speed)
+    if not samples:
+        return None
+    return nice_wind_speed(float(np.percentile(np.concatenate(samples), 90.0)))
 
 
 def output_path(args: argparse.Namespace, input_path: Path, time_index: int) -> Path:
@@ -327,9 +475,10 @@ def render_plot(
     input_path: Path,
     field: xr.DataArray,
     values: np.ndarray,
-    longitude: np.ndarray,
-    latitude: np.ndarray,
-    geographic: bool,
+    grid: GridInfo,
+    wind_u: np.ndarray | None,
+    wind_v: np.ndarray | None,
+    wind_reference: float | None,
     time_label: str | None,
     level_label: str | None,
     time_index: int,
@@ -337,19 +486,27 @@ def render_plot(
     colour_ticks: np.ndarray,
     colour_extend: str,
     colour_map,
-    ccrs,
-    cfeature,
+    map_projection,
+    data_crs,
+    coastlines: list[np.ndarray],
 ) -> Path:
-    if args.coastlines and not geographic:
-        raise ValueError("--coastlines requires longitude and latitude coordinates")
     unit = field.attrs.get("unit", field.attrs.get("units", ""))
     description = field.attrs.get("description", args.variable)
     values = np.ma.masked_invalid(values)
-    if geographic:
-        longitude, latitude, values = prepare_geographic_field(longitude, latitude, values)
+    longitude = grid.longitude
+    latitude = grid.latitude
+    global_grid = grid.geographic and is_global_grid(longitude)
+    plotted_fields = [values]
+    if wind_u is not None and wind_v is not None:
+        plotted_fields.extend((np.ma.masked_invalid(wind_u), np.ma.masked_invalid(wind_v)))
+    if grid.geographic:
+        longitude, latitude, plotted_fields = prepare_geographic_fields(longitude, latitude, plotted_fields)
+    values = plotted_fields[0]
+    if len(plotted_fields) == 3:
+        wind_u, wind_v = plotted_fields[1:]
 
-    use_cartopy = args.coastlines
-    subplot_kw = {"projection": ccrs.PlateCarree()} if use_cartopy else {}
+    use_cartopy = map_projection is not None
+    subplot_kw = {"projection": map_projection} if use_cartopy else {}
     figure, axis = plt.subplots(figsize=(10, 5), subplot_kw=subplot_kw)
     contour_options = {
         "cmap": colour_map,
@@ -357,17 +514,56 @@ def render_plot(
         "levels": colour_levels,
     }
     if use_cartopy:
-        contour_options["transform"] = ccrs.PlateCarree()
+        contour_options["transform"] = data_crs
 
     image = axis.contourf(longitude, latitude, values, **contour_options)
+    if args.coastlines and grid.geographic:
+        draw_coastlines(axis, coastlines, data_crs if use_cartopy else None)
+
+    if wind_u is not None and wind_v is not None and wind_reference:
+        stride = args.wind_stride or max(1, int(np.ceil(max(values.shape)/30)))
+        wind_options = {
+            "color": "#202020",
+            "pivot": "middle",
+            "scale": 20.0*wind_reference,
+            "scale_units": "width",
+            "width": 0.0022,
+            "headwidth": 3.5,
+            "zorder": 5,
+        }
+        if use_cartopy:
+            wind_options["transform"] = data_crs
+        vectors = axis.quiver(
+            longitude[::stride, ::stride],
+            latitude[::stride, ::stride],
+            wind_u[::stride, ::stride],
+            wind_v[::stride, ::stride],
+            **wind_options,
+        )
+        axis.quiverkey(
+            vectors, 0.88, 1.025, wind_reference, f"{wind_reference:g} m s$^{{-1}}$", labelpos="E"
+        )
+
     if use_cartopy:
-        axis.add_feature(cfeature.COASTLINE.with_scale("110m"), linewidth=0.7)
+        if global_grid:
+            axis.set_global()
+        else:
+            extent = [
+                float(np.nanmin(grid.longitude)),
+                float(np.nanmax(grid.longitude)),
+                float(np.nanmin(grid.latitude)),
+                float(np.nanmax(grid.latitude)),
+            ]
+            axis.set_extent(extent, crs=data_crs)
         gridlines = axis.gridlines(draw_labels=True, linewidth=0.3, linestyle="--", alpha=0.5)
         gridlines.top_labels = False
         gridlines.right_labels = False
     else:
-        axis.set_xlabel("longitude" if geographic else "x index")
-        axis.set_ylabel("latitude" if geographic else "y index")
+        if grid.geographic:
+            axis.set_xlim(float(np.nanmin(longitude)), float(np.nanmax(longitude)))
+            axis.set_ylim(float(np.nanmin(latitude)), float(np.nanmax(latitude)))
+        axis.set_xlabel("longitude" if grid.geographic else "x index")
+        axis.set_ylabel("latitude" if grid.geographic else "y index")
 
     labels = [args.variable]
     if level_label:
@@ -388,7 +584,10 @@ def render_plot(
 
 def make_plots(args: argparse.Namespace) -> list[Path]:
     input_path = Path(args.input)
-    ccrs, cfeature = load_cartopy(args.coastlines)
+    if args.wind_stride is not None and args.wind_stride <= 0:
+        raise ValueError("--wind-stride must be a positive integer")
+    ccrs = load_cartopy()
+    coastlines = load_coastlines() if args.coastlines else []
     outputs = []
     with xr.open_dataset(input_path, engine="netcdf4") as dataset:
         if args.variable not in dataset:
@@ -403,22 +602,39 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
             args, data_minimum, data_maximum, quantile_maximum
         )
         colour_map = get_colour_map(args.cmap, len(colour_levels) - 1)
-        coordinates = None
+        wind_reference = find_wind_reference(dataset, time_indices, args.level) if args.wind else None
+        if args.wind and wind_reference is None:
+            print("plot.py: U/V not found; wind vectors were omitted", file=sys.stderr)
+        grid = None
+        map_projection = None
+        data_crs = None
         for time_index in time_indices:
             field, time_label, level_label = select_field(data, time_index, args.level)
             values = np.asarray(field.values)
-            if coordinates is None:
-                coordinates = load_coordinates(dataset, args.grid, values.shape)
-            longitude, latitude, geographic = coordinates
+            if grid is None:
+                grid = load_coordinates(dataset, args.grid, values.shape)
+                map_projection = create_map_projection(grid, ccrs)
+                if ccrs is not None and grid.geographic:
+                    data_crs = ccrs.PlateCarree()
+            wind_u = None
+            wind_v = None
+            if wind_reference is not None:
+                u_field, _, _ = select_field(dataset["U"], time_index, args.level)
+                v_field, _, _ = select_field(dataset["V"], time_index, args.level)
+                wind_u = np.asarray(u_field.values)
+                wind_v = np.asarray(v_field.values)
+                if wind_u.shape != values.shape or wind_v.shape != values.shape:
+                    raise ValueError("U/V shape does not match the plotted field")
             outputs.append(
                 render_plot(
                     args,
                     input_path,
                     field,
                     values,
-                    longitude,
-                    latitude,
-                    geographic,
+                    grid,
+                    wind_u,
+                    wind_v,
+                    wind_reference,
                     time_label,
                     level_label,
                     time_index,
@@ -426,8 +642,9 @@ def make_plots(args: argparse.Namespace) -> list[Path]:
                     colour_ticks,
                     colour_extend,
                     colour_map,
-                    ccrs,
-                    cfeature,
+                    map_projection,
+                    data_crs,
+                    coastlines,
                 )
             )
     return outputs

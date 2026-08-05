@@ -9,7 +9,8 @@ module test_integration_netcdf
    use mod_chem_type, only: chem_table_type
    use mod_chem_csv, only: load_chem_table
    use netcdf, only: nf90_clobber, nf90_close, nf90_create, nf90_def_dim, nf90_enddef, &
-                     nf90_get_var, nf90_inq_varid, nf90_inquire_variable, nf90_noerr, nf90_nowrite, nf90_open
+                     nf90_get_att, nf90_get_var, nf90_global, nf90_inq_varid, nf90_inquire_variable, &
+                     nf90_noerr, nf90_nowrite, nf90_open
    use mpi, only: MPI_Barrier
    use parallel, only: grid_meta_type, process_type
    use projection, only: proj_type
@@ -34,8 +35,8 @@ contains
       type(process_type) :: proc
       type(proj_type) :: projection_definition
       type(nc_type) :: fh
-      real(fp) :: readback(4, 4)
-      integer :: ncid, varid, xtype, status, dimid
+      real(fp) :: readback(4, 4), projection_longitude
+      integer :: ncid, varid, xtype, status, dimid, projection_id
 
       write (filename, '(A,I0,A)') '/tmp/flexctm-test-static-', storage_size(0._fp), '.nc'
       chemistry = load_chem_table('meta/species.csv')
@@ -62,7 +63,7 @@ contains
       call delete_output(proc, filename)
 
       write (filename, '(A,I0,A)') '/tmp/flexctm-test-static-', storage_size(0._fp), '.nc'
-      call write_static_output(proc, proc%domains(1), proc%tiles(1), block_data, filename)
+      call write_static_output(proc, proc%domains(1), proc%tiles(1), block_data, filename, 0, 115._fp, 30._fp, 20._fp, 40._fp)
 
       status = nf90_open(filename, nf90_nowrite, ncid)
       call check(error, status == nf90_noerr, 'NetCDF file cannot be reopened')
@@ -78,6 +79,15 @@ contains
          status = nf90_get_var(ncid, varid, readback)
          call check(error, status == nf90_noerr .and. all(abs(readback - 7.5_fp) <= epsilon(1._fp)), &
                     'NetCDF round trip changed field values')
+      end if
+      if (.not. allocated(error)) then
+         status = nf90_get_att(ncid, nf90_global, 'proj_id', projection_id)
+         call check(error, status == nf90_noerr .and. projection_id == 0, 'static output projection metadata is invalid')
+      end if
+      if (.not. allocated(error)) then
+         status = nf90_get_att(ncid, nf90_global, 'ref_lon', projection_longitude)
+         call check(error, status == nf90_noerr .and. abs(projection_longitude - 115._fp) <= epsilon(1._fp), &
+                    'static output projection longitude is invalid')
       end if
       status = nf90_close(ncid)
 

@@ -219,6 +219,6 @@ name, ndim, inputs, method, source_unit, target_unit, description
 | `output_timedelta` | 相邻输出时次的间隔，单位秒；默认 3600 |
 | `static_grid_file` | 静态网格 NetCDF 文件模板 |
 
-化学输出由 `meta/species.csv` 的 `write_output` 逐变量控制；气象输出由 `meta/mete.standard.csv` 的 `output` 逐变量控制。模式每次初始化都写出静态网格，其中包含 `mlat`、`mlon`、`area` 和 `terrain`。
+化学输出由 `meta/species.csv` 的 `write_output` 逐变量控制；气象输出由 `meta/mete.standard.csv` 的 `output` 逐变量控制。模式每次初始化都写出静态网格，其中包含 `mlat`、`mlon`、`area` 和 `terrain`。静态网格的全局属性保存 `grid_mapping_name`、`proj_id`、`ref_lon`、`ref_lat`、`truelat1` 和 `truelat2`，后处理据此恢复地图投影。
 
 NetCDF 数值类型与模式精度一致：real64 写为 `NF90_DOUBLE`，real32 写为 `NF90_FLOAT`。并行输出只写局地有效区，不写 halo。

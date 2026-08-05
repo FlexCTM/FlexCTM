@@ -21,13 +21,16 @@ module mod_output
 
 contains
 
-   subroutine write_static_output(proc, domain, tile, iblock, filename)
+   subroutine write_static_output(proc, domain, tile, iblock, filename, proj_id, ref_lon, ref_lat, truelat1, truelat2)
       !! 写出网格坐标、面积和地形等静态场。
       type(process_type), intent(in) :: proc
       type(domain_type), intent(in) :: domain
       type(tile_type), intent(in) :: tile
       type(block_type), intent(in) :: iblock
       character(len=*), intent(in) :: filename
+      integer, intent(in) :: proj_id
+      real(fp), intent(in) :: ref_lon, ref_lat
+      real(fp), intent(in) :: truelat1, truelat2
 
       type(nc_type) :: fh
 
@@ -37,8 +40,38 @@ contains
       call write_field(fh, 'mlon', iblock%mesh%mlon, unit='degree', description='longitude of mass grid')
       call write_field(fh, 'area', iblock%mesh%area, unit='m^2', description='grid-cell area')
       call write_field(fh, 'terrain', iblock%terrain, unit='m', description='terrain height')
+      call write_projection_attributes(fh, proj_id, ref_lon, ref_lat, truelat1, truelat2)
       call close_nc_file(fh)
    end subroutine write_static_output
+
+   subroutine write_projection_attributes(fh, proj_id, ref_lon, ref_lat, truelat1, truelat2)
+      type(nc_type), intent(in) :: fh
+      integer, intent(in) :: proj_id
+      real(fp), intent(in) :: ref_lon, ref_lat
+      real(fp), intent(in) :: truelat1, truelat2
+      character(len=32) :: mapping_name
+
+      if (proj_id == 0) then
+         mapping_name = 'latitude_longitude'
+      else
+         mapping_name = 'lambert_conformal_conic'
+      end if
+
+      call check_netcdf(nf90_redef(fh%id), 'entering NetCDF define mode', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'grid_mapping_name', trim(mapping_name)), &
+                        'writing grid mapping name', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'proj_id', proj_id), &
+                        'writing projection identifier', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'ref_lon', ref_lon), &
+                        'writing projection central longitude', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'ref_lat', ref_lat), &
+                        'writing projection origin latitude', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'truelat1', truelat1), &
+                        'writing first standard parallel', fh%filename)
+      call check_netcdf(nf90_put_att(fh%id, NF90_GLOBAL, 'truelat2', truelat2), &
+                        'writing second standard parallel', fh%filename)
+      call check_netcdf(nf90_enddef(fh%id), 'ending NetCDF define mode', fh%filename)
+   end subroutine write_projection_attributes
 
    subroutine write_model_output(proc, domain, tile, iblock, filename)
       !! 将当前化学状态和 output=true 的气象场写入同一文件。
